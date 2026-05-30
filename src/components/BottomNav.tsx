@@ -5,45 +5,51 @@ import { Home, BarChart2, MessageSquare, Settings } from 'lucide-react';
 interface BottomNavProps {
     currentTab: 'today' | 'coach' | 'stats' | 'settings';
     onTabChange: (tab: 'today' | 'coach' | 'stats' | 'settings') => void;
+    isHidden?: boolean;
 }
 
-export default function BottomNav({ currentTab, onTabChange }: BottomNavProps) {
+export default function BottomNav({ currentTab, onTabChange, isHidden = false }: BottomNavProps) {
+    const tabs = [
+        { id: 'today', label: 'Home', icon: Home },
+        { id: 'coach', label: 'Coach', icon: MessageSquare },
+        { id: 'stats', label: 'Stats', icon: BarChart2 },
+        { id: 'settings', label: 'Settings', icon: Settings },
+    ] as const;
+
     return (
-        <nav className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-[#0f172a]/90 backdrop-blur-xl border-t border-slate-200 dark:border-white/5 pt-2 pb-[calc(env(safe-area-inset-bottom)+8px)] z-50 transition-all duration-300">
-            <div className="flex items-center justify-around h-14 max-w-3xl mx-auto px-4">
-                <button
-                    onClick={() => onTabChange('today')}
-                    className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${currentTab === 'today' ? 'text-indigo-500' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
-                >
-                    <Home className="w-5 h-5" />
-                    <span className="text-[10px] font-medium">Home</span>
-                </button>
-
-                <button
-                    onClick={() => onTabChange('coach')}
-                    className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${currentTab === 'coach' ? 'text-indigo-500' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
-                >
-                    <MessageSquare className="w-5 h-5" />
-                    <span className="text-[10px] font-medium">Coach</span>
-                </button>
-
-                <button
-                    onClick={() => onTabChange('stats')}
-                    className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${currentTab === 'stats' ? 'text-indigo-500' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
-                >
-                    <BarChart2 className="w-5 h-5" />
-                    <span className="text-[10px] font-medium">Stats</span>
-                </button>
-
-                <button
-                    onClick={() => onTabChange('settings')}
-                    className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${currentTab === 'settings' ? 'text-indigo-500' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
-                >
-                    <Settings className="w-5 h-5" />
-                    <span className="text-[10px] font-medium">Settings</span>
-                </button>
+        <nav 
+            className={`fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 bg-white/75 dark:bg-slate-950/80 backdrop-blur-xl border border-slate-200/60 dark:border-white/10 p-1 rounded-full z-50 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-lg shadow-slate-200/25 dark:shadow-black/50 transform ${
+                isHidden 
+                    ? 'translate-y-28 -translate-x-1/2 opacity-0 scale-90 pointer-events-none md:translate-y-0 md:-translate-x-1/2 md:opacity-100 md:scale-100 md:pointer-events-auto' 
+                    : 'translate-y-0 -translate-x-1/2 opacity-100 scale-100'
+            }`}
+        >
+            <div className="flex items-center gap-1 sm:gap-1.5 h-10 px-1 relative">
+                {tabs.map((tab) => {
+                    const Icon = tab.icon;
+                    const isActive = currentTab === tab.id;
+                    return (
+                        <button
+                            key={tab.id}
+                            onClick={() => onTabChange(tab.id)}
+                            className={`flex items-center gap-1 sm:gap-1.5 py-1.5 px-3 sm:px-4 rounded-full transition-all duration-300 relative group cursor-pointer ${
+                                isActive 
+                                    ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50/90 dark:bg-indigo-500/10 scale-105 font-bold' 
+                                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:scale-105'
+                            }`}
+                        >
+                            <Icon className="w-4 h-4 sm:w-4.5 sm:h-4.5 transition-transform duration-300 group-hover:scale-110" />
+                            <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-wider overflow-hidden whitespace-nowrap transition-all duration-300 ease-in-out ${
+                                isActive 
+                                    ? 'max-w-[55px] sm:max-w-[80px] opacity-100 ml-0.5' 
+                                    : 'max-w-0 opacity-0 pointer-events-none'
+                            }`}>
+                                {tab.label}
+                            </span>
+                        </button>
+                    );
+                })}
             </div>
         </nav>
     );
 }
-

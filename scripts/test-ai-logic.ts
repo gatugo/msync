@@ -3,8 +3,8 @@ import { buildPrompt, calculateFreeSlots } from '../src/lib/coachLogic';
 
 // --- Mock Data ---
 const mockTasks = [
-    { title: 'Morning Meeting', scheduledDate: '2026-01-26', scheduledTime: '09:00', duration: 60, status: 'TODO', type: 'ADULT' },
-    { title: 'Lunch', scheduledDate: '2026-01-26', scheduledTime: '12:00', duration: 30, status: 'TODO', type: 'REST' }
+    { id: '1', title: 'Morning Meeting', scheduledDate: '2026-01-26', scheduledTime: '09:00', duration: 60, status: 'TODO' as const, type: 'ADULT' as const, createdAt: new Date().toISOString() },
+    { id: '2', title: 'Lunch', scheduledDate: '2026-01-26', scheduledTime: '12:00', duration: 30, status: 'TODO' as const, type: 'REST' as const, createdAt: new Date().toISOString() }
 ];
 
 const mockRequest = {
@@ -15,7 +15,14 @@ const mockRequest = {
     score: 80,
     balance: 'optimal',
     question: 'What should I do?',
-    preferences: { sleepStartTime: '23:00', sleepEndTime: '06:00' }
+    preferences: { 
+        hobbies: ['Reading'], 
+        interests: ['Tech'], 
+        passions: ['AI'], 
+        work: ['Dev'], 
+        sleepStartTime: '23:00', 
+        sleepEndTime: '06:00' 
+    }
 };
 
 // --- Tests ---

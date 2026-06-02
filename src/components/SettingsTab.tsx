@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { useStore } from '@/store/useStore';
@@ -12,9 +12,10 @@ interface SettingsTabProps {
     setShowGoals: (show: boolean) => void;
     handleImport: () => void;
     handleExport: () => void;
+    onScrollDirectionChange?: (isHidden: boolean) => void;
 }
 
-export default function SettingsTab({ showGoals, setShowGoals, handleImport, handleExport }: SettingsTabProps) {
+export default function SettingsTab({ showGoals, setShowGoals, handleImport, handleExport, onScrollDirectionChange }: SettingsTabProps) {
     const [user, setUser] = useState<any>(null);
     const [showDataModal, setShowDataModal] = useState(false);
     const router = useRouter();
@@ -22,6 +23,32 @@ export default function SettingsTab({ showGoals, setShowGoals, handleImport, han
 
     const [tempPrefs, setTempPrefs] = useState(preferences);
     const [isPersonalizationOpen, setIsPersonalizationOpen] = useState(false);
+
+    const lastScrollTopRef = useRef<number>(0);
+
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        if (!onScrollDirectionChange) return;
+        const scrollTop = e.currentTarget.scrollTop;
+        const maxScroll = e.currentTarget.scrollHeight - e.currentTarget.clientHeight;
+
+        // Guard: If the previous scroll position is greater than the current maxScroll,
+        // it means the container resized and clamped the scroll position downward.
+        // This is an automatic layout adjustment, NOT a user scroll action.
+        if (lastScrollTopRef.current > maxScroll) {
+            lastScrollTopRef.current = scrollTop;
+            return;
+        }
+
+        if (Math.abs(scrollTop - lastScrollTopRef.current) < 10) return;
+        if (scrollTop > lastScrollTopRef.current && scrollTop > 60) {
+            onScrollDirectionChange(true);
+        } else if (scrollTop < lastScrollTopRef.current) {
+            if (scrollTop < maxScroll - 10) {
+                onScrollDirectionChange(false);
+            }
+        }
+        lastScrollTopRef.current = scrollTop;
+    };
 
     useEffect(() => {
         const getUser = async () => {
@@ -63,23 +90,27 @@ export default function SettingsTab({ showGoals, setShowGoals, handleImport, han
     };
 
     return (
-        <div className="h-full p-4 sm:p-6 space-y-6 relative overflow-y-auto pb-32 custom-scrollbar">
-            <div className="flex items-center justify-between">
-                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Settings</h2>
-                <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] bg-slate-100 dark:bg-white/5 px-3 py-1 rounded-full border border-slate-200 dark:border-white/5">
-                    v1.2.0
+        <div 
+            onScroll={handleScroll}
+            className="h-full p-4 sm:p-6 relative overflow-y-auto pb-32 custom-scrollbar"
+        >
+            <div className="max-w-3xl mx-auto w-full space-y-6">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Settings</h2>
                 </div>
-            </div>
 
             {/* Account Panel (Premium Hub Look) */}
-            <div className="bg-white/50 dark:bg-slate-900/40 backdrop-blur-2xl p-6 rounded-2xl relative overflow-hidden group border border-slate-200/50 dark:border-white/5 shadow-xl shadow-indigo-500/5">
+            <div className="bg-white/50 dark:bg-slate-900/40 backdrop-blur-2xl p-6 rounded-2xl relative overflow-hidden group border border-slate-200/50 dark:border-white/10 shadow-xl shadow-indigo-500/5 glow-card-hover">
                 <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-30" />
 
                 {user ? (
                     <div className="space-y-6 relative">
                         <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-indigo-500/30 ring-4 ring-indigo-500/10 transition-transform group-hover:scale-105 duration-300">
-                                {user.email?.[0].toUpperCase()}
+                            <div className="relative">
+                                <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-2xl blur-[6px] opacity-40 group-hover:opacity-60 group-hover:scale-110 transition-all duration-500 animate-pulse" />
+                                <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-600 flex items-center justify-center text-white font-black text-2xl shadow-xl transition-transform group-hover:scale-105 duration-300 border border-white/20">
+                                    {user.email?.[0].toUpperCase()}
+                                </div>
                             </div>
                             <div className="flex-1 min-w-0">
                                 <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Active Member</h3>
@@ -92,7 +123,7 @@ export default function SettingsTab({ showGoals, setShowGoals, handleImport, han
                         </div>
                         <button
                             onClick={handleLogout}
-                            className="w-full py-3 bg-slate-100 dark:bg-slate-800 hover:bg-red-500/10 hover:text-red-500 text-slate-600 dark:text-slate-400 rounded-xl transition-all font-bold text-xs uppercase tracking-widest border border-slate-200 dark:border-white/5"
+                            className="w-full py-3 bg-slate-50 dark:bg-white/[0.02] hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20 text-slate-600 dark:text-slate-400 rounded-xl transition-all font-bold text-xs uppercase tracking-widest border border-slate-200 dark:border-white/10 shadow-sm"
                         >
                             Log Out Session
                         </button>
@@ -120,7 +151,7 @@ export default function SettingsTab({ showGoals, setShowGoals, handleImport, han
             </div>
 
             {/* Brain Personalization (Glass Accordion) */}
-            <div className={`bg-white/50 dark:bg-slate-900/40 backdrop-blur-2xl rounded-2xl overflow-hidden transition-all duration-500 border border-slate-200/50 dark:border-white/5 ${isPersonalizationOpen ? 'shadow-2xl shadow-indigo-500/10' : ''}`}>
+            <div className={`bg-white/50 dark:bg-slate-900/40 backdrop-blur-2xl rounded-2xl overflow-hidden transition-all duration-500 border border-slate-200/50 dark:border-white/10 glow-card-hover ${isPersonalizationOpen ? 'shadow-2xl shadow-indigo-500/10' : ''}`}>
                 <button
                     onClick={() => setIsPersonalizationOpen(!isPersonalizationOpen)}
                     className="w-full flex items-center justify-between p-5 hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
@@ -180,24 +211,27 @@ export default function SettingsTab({ showGoals, setShowGoals, handleImport, han
                         )}
 
 
-                        {/* AI & Offline Toggle */}
-                        <div className="flex items-center justify-between p-4 bg-indigo-50 dark:bg-slate-800/50 rounded-2xl border border-indigo-100 dark:border-white/5">
+                        {/* Premium AI & Offline Toggle */}
+                        <div className="flex items-center justify-between p-5 bg-white/5 dark:bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-slate-200 dark:border-white/10 shadow-lg">
                             <div className="flex items-center gap-4">
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${tempPrefs.aiEnabled ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20' : 'bg-slate-200 dark:bg-slate-700 text-slate-400'}`}>
-                                    <span className="material-icons-round text-xl">{tempPrefs.aiEnabled ? 'smart_toy' : 'power_off'}</span>
+                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-500 ${tempPrefs.aiEnabled ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-xl shadow-indigo-500/30 ring-2 ring-indigo-500/20' : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 ring-1 ring-slate-300 dark:ring-white/5'}`}>
+                                    <span className="material-icons-round text-2xl">{tempPrefs.aiEnabled ? 'smart_toy' : 'power_off'}</span>
                                 </div>
                                 <div>
-                                    <p className="text-sm font-bold text-slate-900 dark:text-white">Enable AI Intelligence</p>
-                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
-                                        {tempPrefs.aiEnabled ? 'Using Gemini/Groq for advanced advice' : 'Using Offline Smart Logic only'}
+                                    <p className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                        Enable AI Intelligence
+                                        {tempPrefs.aiEnabled && <span className="flex w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />}
+                                    </p>
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                                        {tempPrefs.aiEnabled ? 'Using AI for advanced insight' : 'Using Local Smart Logic only'}
                                     </p>
                                 </div>
                             </div>
                             <button
                                 onClick={() => setTempPrefs(p => ({ ...p, aiEnabled: !p.aiEnabled }))}
-                                className={`w-12 h-7 rounded-full transition-colors relative flex items-center px-1 ${tempPrefs.aiEnabled ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-700'}`}
+                                className={`w-14 h-8 rounded-full transition-colors relative flex items-center px-1 shadow-inner ${tempPrefs.aiEnabled ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-700'}`}
                             >
-                                <div className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${tempPrefs.aiEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                                <div className={`w-6 h-6 rounded-full bg-white shadow-md transition-transform duration-300 ${tempPrefs.aiEnabled ? 'translate-x-6 scale-110' : 'translate-x-0'}`} />
                             </button>
                         </div>
 
@@ -268,7 +302,7 @@ export default function SettingsTab({ showGoals, setShowGoals, handleImport, han
             </div>
 
             {/* Data Management (Glass Action Card) */}
-            <div className="bg-white/50 dark:bg-slate-900/40 backdrop-blur-2xl rounded-2xl border border-slate-200/50 dark:border-white/5 overflow-hidden group hover:shadow-xl hover:shadow-indigo-500/5 transition-all">
+            <div className="bg-white/50 dark:bg-slate-900/40 backdrop-blur-2xl rounded-2xl border border-slate-200/50 dark:border-white/10 overflow-hidden group glow-card-hover transition-all">
                 <button
                     onClick={() => setShowDataModal(true)}
                     className="flex items-center justify-between w-full p-5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
@@ -370,6 +404,7 @@ export default function SettingsTab({ showGoals, setShowGoals, handleImport, han
                     </div>
                 </div>
             )}
+            </div>
         </div>
 
     );

@@ -3,11 +3,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { Plus, X, ChevronDown, Bot, Loader2, Sparkles } from 'lucide-react';
 import { useStore } from '@/store/useStore';
+import { supabase } from '@/lib/supabase';
 import { TaskType } from '@/types';
 import TimePicker from './TimePicker';
 import DatePicker from './DatePicker';
 import Portal from './Portal';
 import { parseNaturalDateTime, format12h } from '@/lib/datePatterns';
+import { detectTaskType } from '@/lib/smartLogic';
 
 interface AddTaskPanelProps {
     isOpen: boolean;
@@ -21,10 +23,17 @@ const typeConfig: Record<TaskType, { emoji: string; label: string; color: string
     REST: { emoji: '🟢', label: 'Rest', color: 'bg-green-500' },
 };
 
+const getLocalDateString = (d: Date = new Date()) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 export default function AddTaskPanel({ isOpen, onClose, onAdd }: AddTaskPanelProps) {
     const [title, setTitle] = useState('');
     const [type, setType] = useState<TaskType>('ADULT');
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [date, setDate] = useState(getLocalDateString());
     const [time, setTime] = useState('');
     const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
     const [isAILoading, setIsAILoading] = useState(false);
@@ -35,6 +44,7 @@ export default function AddTaskPanel({ isOpen, onClose, onAdd }: AddTaskPanelPro
 
     // Get tasks from store for AI context
     const tasks = useStore((state) => state.tasks);
+    const preferences = useStore((state) => state.preferences);
 
     // Auto-focus input when opened
     useEffect(() => {
@@ -63,25 +73,95 @@ export default function AddTaskPanel({ isOpen, onClose, onAdd }: AddTaskPanelPro
         };
     }, [isTypeDropdownOpen]);
 
-    const handleSubmit = (e?: React.FormEvent) => {
+    const handleSubmit = async (e?: React.FormEvent) => {
         e?.preventDefault();
-        if (title.trim()) {
-            const parsed = parseNaturalDateTime(title);
-            // Use parsed values if picker values are defaults/empty
-            const today = new Date().toISOString().split('T')[0];
-            const finalDate = (date && date !== today) ? date : (parsed.date || date);
-            const finalTime = time || parsed.time;
+        if (!title.trim()) return;
 
-            onAdd(title.trim(), type, finalDate || undefined, finalTime || undefined, parsed.duration);
-            setTitle('');
-            setDate(today);
-            setTime('');
+        const today = getLocalDateString();
+
+        if (preferences.aiEnabled) {
+            setIsAILoading(true);
             setAIError(null);
-            onClose();
+            try {
+                const now = new Date();
+                const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                const localTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+                const { data: { session } } = await supabase.auth.getSession();
+                const token = session?.access_token;
+
+                const response = await fetch('/api/coach', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                    },
+                    body: JSON.stringify({
+                        mode: 'schedule_assist',
+                        taskTitle: title.trim(),
+                        localDate,
+                        localTime,
+                        tasks: tasks.map(t => ({
+                            scheduledDate: t.scheduledDate,
+                            scheduledTime: t.scheduledTime,
+                            duration: t.duration,
+                            status: t.status
+                        })),
+                    }),
+                });
+
+                const data = await response.json();
+                if (!data.success) throw new Error(data.error || 'AI request failed');
+
+                let jsonStr = data.response;
+                const firstBrace = jsonStr.indexOf('{');
+                const lastBrace = jsonStr.lastIndexOf('}');
+                if (firstBrace !== -1 && lastBrace !== -1) {
+                    jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+                }
+                const suggestion = JSON.parse(jsonStr);
+
+                const aiType = (suggestion.suggestedType && ['ADULT', 'CHILD', 'REST'].includes(suggestion.suggestedType))
+                    ? suggestion.suggestedType as TaskType
+                    : type;
+                
+                // If user didn't change date from today, and time is empty, prefer AI suggestions
+                const finalDate = (date !== today) ? date : (suggestion.suggestedDate || date);
+                const finalTime = time || suggestion.suggestedTime;
+
+                onAdd(title.trim(), aiType, finalDate || undefined, finalTime || undefined, undefined);
+                
+                setTitle('');
+                setDate(today);
+                setTime('');
+                setAIError(null);
+                onClose();
+                return;
+            } catch (error) {
+                console.error('AI Smart Add error during submit:', error);
+                // Fallback to local logic if AI fails
+            } finally {
+                setIsAILoading(false);
+            }
         }
+
+        // Local Smart Logic Fallback (or if AI is disabled)
+        const parsed = parseNaturalDateTime(title);
+        const finalDate = (date && date !== today) ? date : (parsed.date || date);
+        const finalTime = time || parsed.time;
+        // Use detected type only if user left it on default 'ADULT', or maybe detectTaskType
+        // Actually detectTaskType isn't used in the original handleSubmit, let's use it for extra smartness
+        const localType = type === 'ADULT' ? detectTaskType(title) : type;
+
+        onAdd(title.trim(), localType, finalDate || undefined, finalTime || undefined, parsed.duration);
+        setTitle('');
+        setDate(today);
+        setTime('');
+        setAIError(null);
+        onClose();
     };
 
-    // AI-Assisted Scheduling (Smart Add)
+    // AI-Assisted Scheduling (Smart Add) - Kept for the manual sparkles button
     const handleSmartAdd = async () => {
         if (!title.trim()) {
             setAIError('Enter a task description first!');
@@ -92,14 +172,24 @@ export default function AddTaskPanel({ isOpen, onClose, onAdd }: AddTaskPanelPro
         setAIError(null);
 
         try {
+            if (preferences.aiEnabled === false) {
+                throw new Error('OFFLINE_MODE');
+            }
+
             // Capture Local Time context
             const now = new Date();
             const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
             const localTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 
+            const { data: { session } } = await supabase.auth.getSession();
+            const token = session?.access_token;
+
             const response = await fetch('/api/coach', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
                 body: JSON.stringify({
                     mode: 'schedule_assist',
                     taskTitle: title.trim(),
@@ -135,7 +225,7 @@ export default function AddTaskPanel({ isOpen, onClose, onAdd }: AddTaskPanelPro
             const newType = (suggestion.suggestedType && ['ADULT', 'CHILD', 'REST'].includes(suggestion.suggestedType))
                 ? suggestion.suggestedType
                 : 'ADULT';
-            const newDate = suggestion.suggestedDate || new Date().toISOString().split('T')[0];
+            const newDate = suggestion.suggestedDate || getLocalDateString();
             const newTime = suggestion.suggestedTime;
 
             // Auto-fill fields instead of submitting
@@ -156,16 +246,17 @@ export default function AddTaskPanel({ isOpen, onClose, onAdd }: AddTaskPanelPro
 
             if (parsed.date || parsed.time || parsed.duration) {
                 // Apply local parsed values
-                const today = new Date().toISOString().split('T')[0];
+                const today = getLocalDateString();
                 setDate(parsed.date || today);
                 if (parsed.time) setTime(parsed.time);
-                // Type defaults to ADULT in fallback
-                setType('ADULT');
+                setType(detectTaskType(title));
 
                 setAIError('✨ Offline mode: Details auto-detected.');
                 setTimeout(() => setAIError(null), 3000);
             } else {
-                setAIError(error instanceof Error ? error.message : 'Failed to smart add');
+                // Fallback gracefully without showing scary "All AI services busy" error
+                setAIError('⚡ Offline Mode: Please set time manually.');
+                setTimeout(() => setAIError(null), 3000);
             }
         } finally {
             setIsAILoading(false);

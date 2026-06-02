@@ -16,6 +16,7 @@ export const parseNaturalDateTime = (input: string): ParsedDateTime => {
     let targetDate = new Date(now);
     let targetTime: string | undefined;
     let detectedDuration: number | undefined;
+    let dateDetected = false;
 
     // Helper to remove text case-insensitively
     const removePattern = (text: string, pattern: string | RegExp) => {
@@ -55,6 +56,7 @@ export const parseNaturalDateTime = (input: string): ParsedDateTime => {
         if (y < 100) y += 2000;
         targetDate = new Date(y, m, d);
         clean = removePattern(clean, numericDateMatch[0]);
+        dateDetected = true;
     } else if (namedDateMatch) {
         const day = parseInt(namedDateMatch[1]);
         const monthStr = namedDateMatch[0].toLowerCase().match(new RegExp(`(${months})`))![0];
@@ -68,12 +70,15 @@ export const parseNaturalDateTime = (input: string): ParsedDateTime => {
             targetDate.setFullYear(targetDate.getFullYear() + 1);
         }
         clean = removePattern(clean, namedDateMatch[0]);
+        dateDetected = true;
     } else if (clean.match(/\btomorrow\b/i)) {
         targetDate.setDate(targetDate.getDate() + 1);
         clean = removePattern(clean, /\btomorrow\b/i);
+        dateDetected = true;
     } else if (clean.match(/\btoday\b/i)) {
         // Just remove 'today', date is already now
         clean = removePattern(clean, /\btoday\b/i);
+        dateDetected = true;
     } else {
          const nextDayMatch = clean.match(/next\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i);
          if (nextDayMatch) {
@@ -85,6 +90,7 @@ export const parseNaturalDateTime = (input: string): ParsedDateTime => {
             if (daysToAdd <= 0) daysToAdd += 7;
             targetDate.setDate(targetDate.getDate() + daysToAdd);
             clean = removePattern(clean, nextDayMatch[0]);
+            dateDetected = true;
          }
     }
 
@@ -169,6 +175,7 @@ export const parseNaturalDateTime = (input: string): ParsedDateTime => {
              if (targetDate.toDateString() === new Date().toDateString()) {
                  if (relDate.getDate() !== new Date().getDate()) {
                      targetDate.setDate(targetDate.getDate() + 1);
+                     dateDetected = true;
                  }
              }
              clean = removePattern(clean, relativeTimeMatch[0]);
@@ -184,11 +191,8 @@ export const parseNaturalDateTime = (input: string): ParsedDateTime => {
     const day = String(targetDate.getDate()).padStart(2, '0');
     const dateStr = `${year}-${month}-${day}`;
 
-    // Compare with today local
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
     return {
-        date: dateStr !== todayStr ? dateStr : undefined,
+        date: dateDetected ? dateStr : undefined,
         time: targetTime,
         duration: detectedDuration,
         remainingText: clean // Extracted Title
@@ -198,8 +202,8 @@ export const parseNaturalDateTime = (input: string): ParsedDateTime => {
 export const format12h = (timeStr: string) => {
     if (!timeStr) return '';
     const [h, m] = timeStr.split(':').map(Number);
-    const ampm = h >= 12 ? 'pm' : 'am';
+    const ampm = h >= 12 ? 'PM' : 'AM';
     const displayH = h % 12 || 12;
-    const displayM = m === 0 ? '' : `:${m.toString().padStart(2, '0')}`;
-    return `${displayH}${displayM}${ampm}`;
+    const displayM = m.toString().padStart(2, '0');
+    return `${displayH}:${displayM} ${ampm}`;
 };

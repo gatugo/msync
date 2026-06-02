@@ -1,7 +1,8 @@
-
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { api } from '@/lib/api';
-import { Task, Goal, DailySnapshot, TaskType, TaskStatus, UserPreferences } from '@/types';
+import { Task, Goal, DailySnapshot, TaskType, TaskStatus, UserPreferences, AIMemory } from '@/types';
+import { supabase } from '@/lib/supabase';
 
 const getPreferencesFromEnv = (key: string, defaults: string[]): string[] => {
     try {
@@ -14,6 +15,10 @@ const getPreferencesFromEnv = (key: string, defaults: string[]): string[] => {
 };
 
 export interface StoreState {
+    // Auth State
+    isAuthenticated: boolean;
+    authError: string | null;
+
     // Tasks
     tasks: Task[];
     addTask: (title: string, type: TaskType, date?: string, time?: string, duration?: number) => void;
@@ -33,6 +38,10 @@ export interface StoreState {
     toggleGoal: (goalId: string) => void;
     deleteGoal: (goalId: string) => void;
 
+    // AI Memory
+    aiMemory: AIMemory[];
+    addMemory: (fact: string) => void;
+
     // Preferences
     preferences: UserPreferences;
     updatePreferences: (prefs: Partial<UserPreferences>) => void;
@@ -48,6 +57,7 @@ export interface StoreState {
     // Hydration / Sync
     _hasHydrated: boolean;
     fetchInitialData: () => Promise<void>;
+    checkAuth: () => Promise<void>;
     resetStore: () => void;
 }
 
@@ -57,40 +67,66 @@ const generateId = (): string => {
 };
 
 const getTodayString = (): string => {
-    return new Date().toISOString().split('T')[0];
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 };
 
 // Sorting Helpers
 const sortTasks = (tasks: Task[]): Task[] => {
     return [...tasks].sort((a, b) => {
-        // 1. Sort by Date
+        // 1. Completion Status (DONE at the bottom)
+        if (a.status === 'DONE' && b.status !== 'DONE') return 1;
+        if (a.status !== 'DONE' && b.status === 'DONE') return -1;
+
+        // 2. Overdue Tasks at the top
+        const today = getTodayString();
+        const aOverdue = a.scheduledDate && a.scheduledDate < today && a.status !== 'DONE';
+        const bOverdue = b.scheduledDate && b.scheduledDate < today && b.status !== 'DONE';
+        if (aOverdue && !bOverdue) return -1;
+        if (!aOverdue && bOverdue) return 1;
+
+        // 3. Sort by Date
         const dateA = a.scheduledDate || '9999-99-99';
         const dateB = b.scheduledDate || '9999-99-99';
         if (dateA !== dateB) return dateA.localeCompare(dateB);
 
-        // 2. Sort by Time (Treat undefined as last for the day, or first? Usually specific time comes first, but undefined means "all day" or "unscheduled")
-        // Let's put specific times first, then undefined.
-        // Actually, chronological: undefined might mean "anytime", let's put it at the end.
+        // 4. Sort by Time (Treat undefined as last for the day)
         const timeA = a.scheduledTime || '23:59:59';
         const timeB = b.scheduledTime || '23:59:59';
         if (timeA !== timeB) return timeA.localeCompare(timeB);
 
-        // 3. Sort by Creation (Stable)
+        // 5. Sort by Type Priority (ADULT > CHILD > REST)
+        const typePriority = { ADULT: 1, CHILD: 2, REST: 3 };
+        const priorityA = typePriority[a.type] || 99;
+        const priorityB = typePriority[b.type] || 99;
+        if (priorityA !== priorityB) return priorityA - priorityB;
+
+        // 6. Sort by Creation (Stable)
         return a.createdAt.localeCompare(b.createdAt);
     });
 };
 
 const sortGoals = (goals: Goal[]): Goal[] => {
     return [...goals].sort((a, b) => {
-        // 1. Completion Status (Active first) - logic usually filters this, but good to have
+        // 1. Completion Status (Completed at the bottom)
         if (a.completed !== b.completed) return a.completed ? 1 : -1;
 
-        // 2. Target Date (Urgency)
+        // 2. Overdue Goals at the top
+        const today = getTodayString();
+        const aOverdue = a.targetDate && a.targetDate < today && !a.completed;
+        const bOverdue = b.targetDate && b.targetDate < today && !b.completed;
+        if (aOverdue && !bOverdue) return -1;
+        if (!aOverdue && bOverdue) return 1;
+
+        // 3. Target Date (Urgency)
         const dateA = a.targetDate || '9999-99-99';
         const dateB = b.targetDate || '9999-99-99';
         if (dateA !== dateB) return dateA.localeCompare(dateB);
 
-        // 3. Created At
+        // 4. Created At
         return a.createdAt.localeCompare(b.createdAt);
     });
 };
@@ -99,28 +135,64 @@ const sortHistory = (history: DailySnapshot[]): DailySnapshot[] => {
     return [...history].sort((a, b) => b.date.localeCompare(a.date)); // Newest first
 };
 
+let saveSnapshotTimeout: NodeJS.Timeout | null = null;
+
 // ============ STORE ============
-export const useStore = create<StoreState>((set, get) => ({
-    // Initial state
-    tasks: [],
-    history: [],
-    goals: [],
-    _hasHydrated: false,
-    preferences: {
-        hobbies: getPreferencesFromEnv('NEXT_PUBLIC_USER_HOBBIES', ['Reading', 'Hiking', 'Gaming']),
-        interests: getPreferencesFromEnv('NEXT_PUBLIC_USER_INTERESTS', ['Technology', 'Art', 'Music']),
-        passions: getPreferencesFromEnv('NEXT_PUBLIC_USER_PASSIONS', ['Learning', 'Creativity']),
-        work: getPreferencesFromEnv('NEXT_PUBLIC_USER_WORK', ['Software Dev', 'Management']),
-        aiEnabled: true,
+export const useStore = create<StoreState>()(
+    persist(
+        (set, get) => ({
+            // Initial state
+            isAuthenticated: false,
+            authError: null,
+            tasks: [],
+            history: [],
+            goals: [],
+            aiMemory: [],
+            _hasHydrated: false,
+            preferences: {
+                hobbies: getPreferencesFromEnv('NEXT_PUBLIC_USER_HOBBIES', ['Reading', 'Hiking', 'Gaming']),
+                interests: getPreferencesFromEnv('NEXT_PUBLIC_USER_INTERESTS', ['Technology', 'Art', 'Music']),
+                passions: getPreferencesFromEnv('NEXT_PUBLIC_USER_PASSIONS', ['Learning', 'Creativity']),
+                work: getPreferencesFromEnv('NEXT_PUBLIC_USER_WORK', ['Software Dev', 'Management']),
+                aiEnabled: true,
+            },
+
+    checkAuth: async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            set({ isAuthenticated: !!user, authError: null });
+        } catch (error) {
+            console.error('Auth check failed:', error);
+            set({ isAuthenticated: false, authError: 'Authentication check failed' });
+        }
     },
 
     fetchInitialData: async () => {
         try {
-            const [tasks, goals, profile, history] = await Promise.all([
+            // Check authentication first
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                set({
+                    isAuthenticated: false,
+                    authError: 'Please log in to access your data',
+                    _hasHydrated: true,
+                    tasks: [],
+                    goals: [],
+                    history: [],
+                    aiMemory: []
+                });
+                return;
+            }
+
+            set({ isAuthenticated: true, authError: null });
+
+            // Fetch all data in parallel
+            const [tasks, goals, profile, history, aiMemory] = await Promise.all([
                 api.fetchTasks(),
                 api.fetchGoals(),
                 api.fetchProfile(),
-                api.fetchHistory()
+                api.fetchHistory(),
+                api.fetchMemories()
             ]);
 
             const newPrefs = { ...get().preferences };
@@ -133,12 +205,13 @@ export const useStore = create<StoreState>((set, get) => ({
                 if (profile.sleep_end_time) newPrefs.sleepEndTime = profile.sleep_end_time;
             }
 
-            set({ 
-                tasks: sortTasks(tasks), 
-                goals: sortGoals(goals), 
-                history: sortHistory(history), 
-                preferences: newPrefs, 
-                _hasHydrated: true 
+            set({
+                tasks: sortTasks(tasks),
+                goals: sortGoals(goals),
+                history: sortHistory(history),
+                aiMemory: aiMemory || [],
+                preferences: newPrefs,
+                _hasHydrated: true
             });
         } catch (error) {
             console.error('Failed to fetch initial data:', error);
@@ -148,9 +221,12 @@ export const useStore = create<StoreState>((set, get) => ({
 
     resetStore: () => {
         set({
+            isAuthenticated: false,
+            authError: null,
             tasks: [],
             history: [],
             goals: [],
+            aiMemory: [],
             _hasHydrated: true // Keep true to avoid hydration mismatch
         });
     },
@@ -163,7 +239,7 @@ export const useStore = create<StoreState>((set, get) => ({
             title,
             type,
             status: initialStatus,
-            scheduledDate: date || new Date().toISOString().split('T')[0],
+            scheduledDate: date || getTodayString(),
             scheduledTime: time,
             duration,
             createdAt: new Date().toISOString(),
@@ -229,34 +305,38 @@ export const useStore = create<StoreState>((set, get) => ({
 
     // History actions
     saveDailySnapshot: () => {
-        const state = get();
-        const today = getTodayString();
-        const { score } = state.getDailyScore();
+        if (saveSnapshotTimeout) clearTimeout(saveSnapshotTimeout);
+        
+        saveSnapshotTimeout = setTimeout(() => {
+            const state = get();
+            const today = getTodayString();
+            const { score } = state.getDailyScore();
 
-        const completedTasks = state.tasks.filter((t) => t.status === 'DONE');
-        const adultCompleted = completedTasks.filter((t) => t.type === 'ADULT').length;
-        const childCompleted = completedTasks.filter((t) => t.type === 'CHILD').length;
-        const restCompleted = completedTasks.filter((t) => t.type === 'REST').length;
+            const completedTasks = state.tasks.filter((t) => t.status === 'DONE');
+            const adultCompleted = completedTasks.filter((t) => t.type === 'ADULT').length;
+            const childCompleted = completedTasks.filter((t) => t.type === 'CHILD').length;
+            const restCompleted = completedTasks.filter((t) => t.type === 'REST').length;
 
-        const snapshot: DailySnapshot = {
-            date: today,
-            tasks: [...state.tasks],
-            score,
-            adultCompleted,
-            childCompleted,
-            restCompleted,
-        };
+            const snapshot: DailySnapshot = {
+                date: today,
+                tasks: [...state.tasks],
+                score,
+                adultCompleted,
+                childCompleted,
+                restCompleted,
+            };
 
-        const existingIndex = state.history.findIndex((h) => h.date === today);
-        if (existingIndex >= 0) {
-            const newHistory = [...state.history];
-            newHistory[existingIndex] = snapshot;
-            set({ history: sortHistory(newHistory) });
-        } else {
-            set({ history: sortHistory([...state.history, snapshot]) });
-        }
+            const existingIndex = state.history.findIndex((h) => h.date === today);
+            if (existingIndex >= 0) {
+                const newHistory = [...state.history];
+                newHistory[existingIndex] = snapshot;
+                set({ history: sortHistory(newHistory) });
+            } else {
+                set({ history: sortHistory([...state.history, snapshot]) });
+            }
 
-        api.saveSnapshot(snapshot);
+            api.saveSnapshot(snapshot);
+        }, 1500); // Debounce to prevent over-saving during rapid changes
     },
 
     // Goal actions
@@ -305,6 +385,17 @@ export const useStore = create<StoreState>((set, get) => ({
         api.deleteGoal(goalId);
     },
 
+    // AI Memory actions
+    addMemory: (fact: string) => {
+        const newMemory: AIMemory = {
+            id: generateId(),
+            fact,
+            createdAt: new Date().toISOString(),
+        };
+        set((state) => ({ aiMemory: [...state.aiMemory, newMemory] }));
+        api.saveMemory(fact);
+    },
+
     updatePreferences: (newPrefs) => {
         set((state) => ({
             preferences: { ...state.preferences, ...newPrefs }
@@ -316,9 +407,10 @@ export const useStore = create<StoreState>((set, get) => ({
             interests: newPrefs.interests,
             passions: newPrefs.passions,
             work: newPrefs.work,
+            // @ts-ignore - map to snake_case for DB
             sleep_start_time: newPrefs.sleepStartTime,
+            // @ts-ignore - map to snake_case for DB
             sleep_end_time: newPrefs.sleepEndTime,
-
         });
     },
 
@@ -401,8 +493,18 @@ export const useStore = create<StoreState>((set, get) => ({
                 return true;
             }
             return false;
-        } catch {
+        } catch (e) {
+            console.error('Import failed:', e);
             return false;
         }
     },
-}));
+}),
+{
+    name: 'mindsync-storage',
+    storage: createJSONStorage(() => localStorage),
+    onRehydrateStorage: () => (state) => {
+        if (state) state._hasHydrated = true;
+    }
+}
+)
+);

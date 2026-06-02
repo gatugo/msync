@@ -8,7 +8,6 @@ export default function Portal({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         setMounted(true);
-        return () => setMounted(false);
     }, []);
 
     if (!mounted) return null;

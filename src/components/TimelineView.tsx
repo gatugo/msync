@@ -1,16 +1,17 @@
 import { Task, TaskType } from '@/types';
 import { useMemo, useState, useEffect, useRef } from 'react';
-import { Pencil, Check, X, Trash2, Plus, Clock, ChevronLeft, ChevronRight, Calendar as CalendarIcon, LayoutList, Grid, Bot, Loader2, Sparkles } from 'lucide-react';
-import { parseNaturalDateTime, format12h } from '@/lib/datePatterns';
+import { Check, Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, LayoutList, Grid } from 'lucide-react';
+import { format12h } from '@/lib/datePatterns';
 
 interface TimelineViewProps {
     tasks: Task[];
     onMoveTask: (taskId: string, newStatus: 'TODO' | 'START' | 'DONE') => void;
-    onDeleteTask: (taskId: string) => void;
     onUpdateTask: (taskId: string, updates: Partial<Pick<Task, 'title' | 'scheduledTime' | 'duration'>>) => void;
-    onAddTask: (title: string, type: TaskType, date: string, time: string, duration?: number) => void;
+    onDeleteTask: (taskId: string) => void;
+    onAddTask: (title: string, type: TaskType, date?: string, time?: string, duration?: number) => void;
     onEditTask: (task: Task) => void;
     onRequestCreateTask: (date: string, time: string) => void;
+    onScrollDirectionChange?: (isScrollingDown: boolean) => void;
 }
 
 const typeConfig: Record<TaskType, { emoji: string; bg: string; border: string; label: string }> = {
@@ -19,13 +20,14 @@ const typeConfig: Record<TaskType, { emoji: string; bg: string; border: string; 
     REST: { emoji: '🟢', bg: 'bg-green-500/20', border: 'border-green-500/50', label: 'Rest' },
 };
 
-const DURATION_OPTIONS = [
-    { value: 15, label: '15m' },
-    { value: 30, label: '30m' },
-    { value: 60, label: '1h' },
-    { value: 90, label: '1.5h' },
-    { value: 120, label: '2h' },
-];
+const typeClasses: Record<TaskType, string> = {
+    ADULT: 'border border-blue-500/25 bg-blue-950/20 shadow-[0_4px_16px_rgba(59,130,246,0.06)] hover:border-blue-500/40 hover:bg-blue-950/30 transition-all duration-300',
+    CHILD: 'border border-pink-500/25 bg-pink-950/20 shadow-[0_4px_16px_rgba(236,72,153,0.06)] hover:border-pink-500/40 hover:bg-pink-950/30 transition-all duration-300',
+    REST: 'border border-emerald-500/25 bg-emerald-950/20 shadow-[0_4px_16px_rgba(16,185,129,0.06)] hover:border-emerald-500/40 hover:bg-emerald-950/30 transition-all duration-300',
+};
+
+
+
 
 type ViewMode = 'day' | 'week' | 'month';
 
@@ -37,12 +39,60 @@ export default function TimelineView({
     onAddTask,
     onEditTask,
     onRequestCreateTask,
+    onScrollDirectionChange,
 }: TimelineViewProps) {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const [viewMode, setViewMode] = useState<ViewMode>('day');
     const [currentDate, setCurrentDate] = useState(new Date());
 
     const [dragOverSlot, setDragOverSlot] = useState<string | null>(null);
+
+    const lastScrollTopRef = useRef<number>(0);
+    const isProgrammaticScrollRef = useRef<boolean>(false);
+    const isInitialLoadingRef = useRef<boolean>(false);
+
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        if (!onScrollDirectionChange) return;
+        const scrollTop = e.currentTarget.scrollTop;
+        
+        // Skip handling scroll events if they are triggered programmatically (e.g. on auto-scroll) or during initial load
+        if (isProgrammaticScrollRef.current || isInitialLoadingRef.current) {
+            lastScrollTopRef.current = scrollTop;
+            return;
+        }
+
+        const maxScroll = e.currentTarget.scrollHeight - e.currentTarget.clientHeight;
+
+        // Guard: If the previous scroll position is greater than the current maxScroll,
+        // it means the container resized and clamped the scroll position downward.
+        // This is an automatic layout adjustment, NOT a user scroll action.
+        if (lastScrollTopRef.current > maxScroll) {
+            lastScrollTopRef.current = scrollTop;
+            return;
+        }
+        
+        // Ignore tiny movements and bounce effects
+        if (Math.abs(scrollTop - lastScrollTopRef.current) < 10) return;
+
+        if (scrollTop > lastScrollTopRef.current && scrollTop > 60) {
+            // Scrolling down -> hide navbar
+            onScrollDirectionChange(true);
+        } else if (scrollTop < lastScrollTopRef.current) {
+            // Scrolling up -> show navbar
+            // If we are at the very bottom, it might be a layout shift, so only show if not clamped to bottom
+            if (scrollTop < maxScroll - 10) {
+                onScrollDirectionChange(false);
+            }
+        }
+        lastScrollTopRef.current = scrollTop;
+    };
+
+    // Reset navbar visibility whenever view mode changes
+    useEffect(() => {
+        if (onScrollDirectionChange) {
+            onScrollDirectionChange(false);
+        }
+    }, [viewMode, onScrollDirectionChange]);
 
     // --- Helpers ---
     // format12h imported from utils
@@ -236,6 +286,13 @@ export default function TimelineView({
     const slotRefs = useRef<Record<string, HTMLDivElement | null>>({});
     useEffect(() => {
         if (viewMode !== 'day') return;
+        
+        // Set loading flag to ignore scroll events during page transition and initial scroll setup
+        isInitialLoadingRef.current = true;
+        const loadingTimer = setTimeout(() => {
+            isInitialLoadingRef.current = false;
+        }, 1200);
+
         setTimeout(() => {
             const now = new Date();
             const h = now.getHours(); const m = now.getMinutes();
@@ -244,37 +301,61 @@ export default function TimelineView({
             const currentEl = slotRefs.current[currentKey];
             if (currentEl && scrollContainerRef.current) {
                 const container = scrollContainerRef.current;
-                container.scrollTo({ top: currentEl.offsetTop - container.clientHeight / 2 + currentEl.clientHeight / 2, behavior: 'smooth' });
+                isProgrammaticScrollRef.current = true;
+                container.scrollTo({ top: currentEl.offsetTop - container.clientHeight / 2 + currentEl.clientHeight / 2, behavior: 'auto' });
+                // Reset the programmatic scroll ref after instant scroll is set
+                setTimeout(() => {
+                    isProgrammaticScrollRef.current = false;
+                }, 100);
             }
         }, 100);
+
+        return () => clearTimeout(loadingTimer);
     }, [viewMode, currentDate]);
 
 
     return (
         <div className="bg-slate-800/40 backdrop-blur-md border border-white/5 rounded-2xl overflow-hidden shadow-xl flex flex-col h-full flex-1 min-h-0 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Header */}
-            <div className="p-4 border-b border-white/5 bg-slate-900/40 flex flex-col gap-4 sm:flex-row justify-between items-center shrink-0">
-                <div className="flex items-center gap-4 w-full sm:w-auto justify-between">
+            <div className="p-4 border-b border-white/5 bg-slate-900/40 flex flex-col gap-4 sm:flex-row justify-between items-center shrink-0 relative">
+                <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
                     <div className="flex bg-white/5 p-1 rounded-lg">
-                        <button onClick={() => setViewMode('day')} className={`p-1.5 rounded-md transition-all ${viewMode === 'day' ? 'bg-indigo-500 text-white' : 'text-white/50 hover:text-white'}`}><LayoutList className="w-4 h-4" /></button>
-                        <button onClick={() => setViewMode('week')} className={`p-1.5 rounded-md transition-all ${viewMode === 'week' ? 'bg-indigo-500 text-white' : 'text-white/50 hover:text-white'}`}><CalendarIcon className="w-4 h-4" /></button>
-                        <button onClick={() => setViewMode('month')} className={`p-1.5 rounded-md transition-all ${viewMode === 'month' ? 'bg-indigo-500 text-white' : 'text-white/50 hover:text-white'}`}><Grid className="w-4 h-4" /></button>
+                        <button onClick={() => setViewMode('day')} className={`p-1.5 rounded-md transition-all duration-200 ${viewMode === 'day' ? 'bg-indigo-500 text-white shadow-sm' : 'text-white/50 hover:text-white hover:bg-white/5'}`}><LayoutList className="w-4 h-4" /></button>
+                        <button onClick={() => setViewMode('week')} className={`p-1.5 rounded-md transition-all duration-200 ${viewMode === 'week' ? 'bg-indigo-500 text-white shadow-sm' : 'text-white/50 hover:text-white hover:bg-white/5'}`}><CalendarIcon className="w-4 h-4" /></button>
+                        <button onClick={() => setViewMode('month')} className={`p-1.5 rounded-md transition-all duration-200 ${viewMode === 'month' ? 'bg-indigo-500 text-white shadow-sm' : 'text-white/50 hover:text-white hover:bg-white/5'}`}><Grid className="w-4 h-4" /></button>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <button onClick={() => navigate('prev')} className="p-1.5 hover:bg-white/10 rounded-lg text-white/70 hover:text-white"><ChevronLeft className="w-4 h-4" /></button>
-                        <button onClick={goToday} className="text-xs font-bold px-2 py-1 bg-white/5 hover:bg-white/10 rounded border border-white/10 text-white/70 hover:text-white transition-colors">Today</button>
-                        <button onClick={() => navigate('next')} className="p-1.5 hover:bg-white/10 rounded-lg text-white/70 hover:text-white"><ChevronRight className="w-4 h-4" /></button>
+                    <div className="flex items-center gap-1.5">
+                        <button onClick={() => navigate('prev')} className="p-1.5 hover:bg-white/10 rounded-lg text-white/70 hover:text-white transition-all active:scale-90"><ChevronLeft className="w-4 h-4" /></button>
+                        <button onClick={goToday} className="text-xs font-bold px-2 py-1 bg-white/5 hover:bg-white/10 rounded border border-white/10 text-white/70 hover:text-white transition-all active:scale-95">Today</button>
+                        <button onClick={() => navigate('next')} className="p-1.5 hover:bg-white/10 rounded-lg text-white/70 hover:text-white transition-all active:scale-90"><ChevronRight className="w-4 h-4" /></button>
                     </div>
-                    <h3 className="text-white font-bold text-xs sm:text-sm md:text-base min-w-[100px] sm:min-w-[140px] text-center">
-                        <span className="sm:hidden">{getHeaderLabel(true)}</span>
-                        <span className="hidden sm:inline">{getHeaderLabel(false)}</span>
+                    <h3 className="text-white font-semibold text-xs sm:text-sm text-center min-w-[80px] md:hidden">
+                        {getHeaderLabel(true)}
                     </h3>
                 </div>
-                <span className="text-[10px] text-white/30 font-medium italic hidden sm:block">Secure the Perimeter</span>
+
+                {/* Centered Date Label for Desktop/Tablet */}
+                <h3 className="hidden md:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white font-bold text-base tracking-wide pointer-events-none bg-gradient-to-r from-slate-100 to-slate-300 text-transparent bg-clip-text select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
+                    {getHeaderLabel()}
+                </h3>
+
+                <button
+                    onClick={() => {
+                        const now = new Date();
+                        const pad = (n: number) => String(n).padStart(2, '0');
+                        const defaultTime = `${pad(now.getHours())}:${now.getMinutes() < 30 ? '00' : '30'}`;
+                        onRequestCreateTask(formatDateKey(currentDate), defaultTime);
+                    }}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs font-bold text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 hover:border-indigo-500/40 hover:text-white shadow-[0_0_15px_rgba(99,102,241,0.08)] hover:shadow-[0_0_20px_rgba(99,102,241,0.2)] hover:scale-[1.03] active:scale-95 transition-all duration-300 ease-out shrink-0 cursor-pointer"
+                >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span className="hidden xs:inline">Add Task</span>
+                    <span className="xs:hidden">Add</span>
+                </button>
             </div>
 
             {/* Content Area */}
-            <div ref={scrollContainerRef} className="flex-1 overflow-y-auto scrollbar-hide relative">
+            <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-auto custom-scrollbar relative">
 
                 {/* DAY VIEW */}
                 {viewMode === 'day' && (
@@ -309,15 +390,15 @@ export default function TimelineView({
                                                 : ''
                                         }`}
                                 >
-                                    <div className={`w-20 shrink-0 flex flex-col items-center py-4 border-r border-white/5 bg-slate-900/20 text-xs font-bold ${isCurrentHour ? 'text-indigo-400' : 'text-white/30'}`}>
+                                    <div className={`w-20 shrink-0 flex flex-col items-center py-4 border-r border-white/5 bg-slate-900/20 text-[11px] uppercase tracking-wider font-bold transition-all ${isCurrentHour ? 'text-indigo-400 bg-indigo-500/10 shadow-[inset_-4px_0_10px_-4px_rgba(99,102,241,0.3)]' : 'text-white/40'}`}>
                                         {formatTimeDisplay(slot.hour, slot.minute)}
                                     </div>
-                                    <div className="flex-1 p-2 flex flex-wrap gap-2 content-start">
+                                    <div className="flex-1 min-w-0 p-2 flex flex-wrap gap-2 content-start">
                                         {slotTasks.map(task => (
                                             <div key={task.id}
                                                 draggable
                                                 onDragStart={(e) => handleDragStart(e, task.id)}
-                                                className={`bg-white/5 backdrop-blur-sm rounded-lg p-2 border border-white/5 hover:border-white/10 hover:bg-white/10 transition-all shadow-sm group flex gap-2 overflow-hidden ${task.status === 'DONE' ? 'opacity-50' : ''}`}
+                                                className={`backdrop-blur-[20px] task-card-hover rounded-xl p-2.5 group flex gap-2 overflow-hidden min-w-[130px] sm:min-w-[210px] flex-1 shrink-0 ${typeClasses[task.type]} ${task.status === 'DONE' ? 'opacity-50 grayscale-[0.5]' : ''}`}
                                                 style={{ minHeight: `${(task.duration || 30) / 30 * 60}px` }}
                                             >
                                                 {/* Inline Complete Button */}
@@ -347,9 +428,14 @@ export default function TimelineView({
                                                 </div>
                                             </div>
                                         ))}
-                                        <div className="flex-1 min-h-[40px] group cursor-pointer flex items-center justify-center"
-                                            onClick={() => onRequestCreateTask(formatDateKey(currentDate), slot.key)}>
-                                            <Plus className="w-4 h-4 text-white/10 group-hover:text-white/40" />
+                                        <div 
+                                            className={`${slotTasks.length > 0 
+                                                ? 'w-11 h-11 border border-dashed border-white/10 hover:border-white/20 hover:bg-white/5 rounded-xl shrink-0 flex items-center justify-center transition-all duration-200' 
+                                                : 'flex-1 min-h-[40px] border border-dashed border-white/5 hover:border-white/10 hover:bg-white/[0.02] rounded-xl flex items-center justify-center transition-all duration-200'
+                                            } group cursor-pointer`}
+                                            onClick={() => onRequestCreateTask(formatDateKey(currentDate), slot.key)}
+                                        >
+                                            <Plus className="w-4 h-4 text-white/15 group-hover:text-white/40 transition-colors" />
                                         </div>
                                     </div>
                                 </div>
@@ -375,7 +461,7 @@ export default function TimelineView({
                                         <div className="text-xs text-white/50 uppercase">{day.toLocaleDateString(undefined, { weekday: 'short' })}</div>
                                         <div className={`text-sm font-bold ${isToday ? 'text-indigo-400' : 'text-white'}`}>{day.getDate()}</div>
                                     </div>
-                                    <div className="flex-1 p-1 space-y-2 overflow-y-auto">
+                                    <div className="flex-1 p-1 space-y-2 overflow-y-auto custom-scrollbar">
                                         {dayTasks.map(task => (
                                             <div key={task.id}
                                                 className={`p-1.5 rounded text-[10px] border truncate text-white/90 shadow-sm ${typeConfig[task.type].bg} ${typeConfig[task.type].border}`}

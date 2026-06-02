@@ -43,3 +43,10 @@ export interface Goal {
     createdAt: string;
     user_id?: string;
 }
+
+export interface AIMemory {
+    id: string;
+    fact: string;
+    createdAt: string;
+    user_id?: string;
+}

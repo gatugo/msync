@@ -68,6 +68,7 @@ Last Updated: January 20, 2026
 - [ ] **Data Sorting & Logic**: Improve task sorting algorithms and data persistence reliability.
 
 ### Future Enhancements
+- [/] **In-Browser Local AI**: Run a small local model directly in the browser (e.g., WebGPU/WebLLM) as a robust, fully offline fallback if the cloud API fails. (In-Progress: See [docs/LOCAL_AI_IMPLEMENTATION.md](file:///C:/Users/Rex/projects/mindsyn-v2/docs/LOCAL_AI_IMPLEMENTATION.md))
 - [ ] More natural language patterns ("this Friday", "in 30 min")
 - [ ] Push notifications for upcoming tasks
 - [ ] Persistence of Rate Limits via Redis
@@ -103,6 +104,21 @@ Last Updated: January 20, 2026
 ---
 
 ## 📝 Session Notes
+
+### June 2, 2026
+- **Local WebGPU AI Feature Commencement**:
+    - Created comprehensive design documentation: [docs/LOCAL_AI_IMPLEMENTATION.md](file:///C:/Users/Rex/projects/mindsyn-v2/docs/LOCAL_AI_IMPLEMENTATION.md) detailing the multi-threaded web worker architecture, safety nets, error scenarios, and fallback mechanics.
+    - Prepared the Git branch setup sequence to isolate experimental development.
+
+### May 28, 2026
+- **AI Coach 2026 UI Overhaul**:
+    - Upgraded AI Coach to a full-height (`100dvh`) split-screen dashboard on desktop, saving vertical space by hiding the global footer.
+    - Merged Mode Tabs (Advice/Chat/Predict) into the top header as low-profile glass buttons for a cleaner layout.
+    - Designed futuristic chat bubbles with asymmetric curves (`rounded-br`/`rounded-tl`) and neon pulse highlights.
+    - Added a collapsible "Cognitive Process" `<details>` block to display the raw reasoning `<thought>` tokens.
+    - Built a comprehensive right-panel "Diagnostics HUD" for desktop with holographic concentric SVG gauges, real-time brain states, and goal milestones.
+    - Implemented a floating glass command capsule with quick-trigger prompt pill suggestions.
+    - Added future roadmap idea for executing a small local in-browser model (WebGPU) as a resilient cloud fallback.
 
 ### January 24, 2026
 - **AI Coach Overhaul**: 

@@ -6,6 +6,7 @@ import { X, Clock, Calendar, Type, Trash2, Save, PlusCircle, Sparkles, Loader2 }
 import TimePicker from '@/components/TimePicker';
 import DatePicker from '@/components/DatePicker';
 import { parseNaturalDateTime } from '@/lib/datePatterns';
+import { detectTaskType } from '@/lib/smartLogic';
 
 interface EditTaskModalProps {
     isOpen: boolean;
@@ -109,15 +110,7 @@ export default function EditTaskModal({ isOpen, onClose, task, initialDate, init
             if (localResult.time) setTime(localResult.time);
             if (localResult.duration) setDuration(localResult.duration);
             
-            // Heuristic for Task Type (Basic Keyword Matching)
-            const lower = title.toLowerCase();
-            if (lower.includes('gym') || lower.includes('workout') || lower.includes('read') || lower.includes('sleep') || lower.includes('nap')) {
-                setType('REST');
-            } else if (lower.includes('play') || lower.includes('game') || lower.includes('movie') || lower.includes('watch') || lower.includes('date')) {
-                setType('CHILD');
-            } else {
-                setType('ADULT'); // Default
-            }
+            setType(detectTaskType(title));
 
         } finally {
             setIsAILoading(false);

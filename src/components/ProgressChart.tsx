@@ -57,7 +57,10 @@ export default function ProgressChart({ history }: ProgressChartProps) {
     for (let i = daysToShow - 1; i >= 0; i--) {
         const date = new Date(now);
         date.setDate(date.getDate() - i);
-        const dateStr = date.toISOString().split('T')[0];
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
 
         const snapshot = filteredHistory.find((h) => h.date === dateStr);
 
@@ -118,12 +121,22 @@ export default function ProgressChart({ history }: ProgressChartProps) {
 
             {/* Chart Area */}
             {chartData.every((d) => d.adult === 0 && d.child === 0 && d.rest === 0) ? (
-                <div className="h-64 flex flex-col items-center justify-center gap-4 text-slate-500">
-                    <span className="material-icons-round text-4xl opacity-20">bar_chart</span>
-                    <p className="text-sm font-medium">Complete tasks to visualize your data</p>
+                <div className="h-64 md:h-[350px] flex flex-col items-center justify-center text-center p-6 relative animate-in fade-in duration-700">
+                    {/* Glowing background blur */}
+                    <div className="absolute inset-0 bg-amber-500/5 blur-3xl rounded-full scale-75 pointer-events-none" />
+                    
+                    <div className="relative mb-4">
+                        <div className="w-16 h-14 rounded-2xl bg-gradient-to-br from-amber-400/10 to-orange-500/10 flex items-center justify-center border border-amber-500/20 text-amber-500 shadow-lg shadow-amber-500/5 animate-pulse">
+                            <span className="material-icons-round text-3xl">analytics</span>
+                        </div>
+                    </div>
+                    <h4 className="text-base font-bold text-white mb-1.5 tracking-tight">Sync History is Quiet</h4>
+                    <p className="text-xs text-slate-400 max-w-[280px] leading-relaxed">
+                        Complete your scheduled tasks today to start plotting your three-brain balance charts and energy tracking.
+                    </p>
                 </div>
             ) : (
-                <div className="h-[300px] w-full">
+                <div className="h-[300px] md:h-[420px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <ComposedChart data={chartData} margin={{ top: 10, right: -10, left: -20, bottom: 0 }}>
                             <defs>

@@ -49,9 +49,29 @@ export const generateSmartInsight = (
 // ==========================================
 
 const KEYWORDS: Record<TaskType, string[]> = {
-    REST: ['sleep', 'nap', 'rest', 'relax', 'meditate', 'break', 'breathe', 'chill', 'recover'],
-    CHILD: ['game', 'play', 'fun', 'movie', 'hobby', 'art', 'music', 'read', 'draw', 'paint', 'video', 'tv'],
-    ADULT: ['work', 'meeting', 'email', 'call', 'study', 'clean', 'chore', 'pay', 'bill', 'gym', 'cook', 'laundry', 'errand']
+    REST: ['sleep', 'nap', 'rest', 'relax', 'meditate', 'break', 'breathe', 'chill', 'recover', 'yoga', 'stretch'],
+    CHILD: [
+        'game', 'play', 'fun', 'movie', 'hobby', 'art', 'music', 'read', 'draw', 'paint', 
+        'video', 'tv', 'show', 'game', 'playstation', 'xbox', 'switch', 'date', 'party', 
+        'concert', 'dance', 'sing', 'joke', 'laugh', 'treat', 'snack', 'ice cream', 'cake'
+    ],
+    ADULT: [
+        'work', 'meeting', 'email', 'call', 'study', 'clean', 'chore', 'pay', 'bill', 
+        'gym', 'cook', 'laundry', 'errand', 'project', 'deadline', 'task', 'office', 
+        'boss', 'client', 'finance', 'tax', 'insurance', 'bank', 'repair', 'fix',
+        'grocery', 'shopping', 'medicine', 'doctor', 'dentist', 'appointment'
+    ]
+};
+
+export const detectTaskType = (title: string): TaskType => {
+    const lowerTitle = title.toLowerCase();
+    
+    // Priority: REST > CHILD > ADULT
+    if (KEYWORDS.REST.some(k => lowerTitle.includes(k))) return 'REST';
+    if (KEYWORDS.CHILD.some(k => lowerTitle.includes(k))) return 'CHILD';
+    if (KEYWORDS.ADULT.some(k => lowerTitle.includes(k))) return 'ADULT';
+    
+    return 'ADULT'; // Default
 };
 
 export const parseOfflineTask = (input: string): Partial<Task> => {
@@ -61,19 +81,7 @@ export const parseOfflineTask = (input: string): Partial<Task> => {
     const title = remainingText || "New Task";
     
     // 2. Infer Type from Title
-    let type: TaskType = 'ADULT'; // Default safety
-    
-    const lowerTitle = title.toLowerCase();
-    
-    // Check keywords (Priority: REST > CHILD > ADULT)
-    // We prioritize REST/CHILD because ADULT is the default "catch-all" responsbility
-    if (KEYWORDS.REST.some(k => lowerTitle.includes(k))) {
-        type = 'REST';
-    } else if (KEYWORDS.CHILD.some(k => lowerTitle.includes(k))) {
-        type = 'CHILD';
-    } else if (KEYWORDS.ADULT.some(k => lowerTitle.includes(k))) {
-        type = 'ADULT';
-    }
+    const type = detectTaskType(title);
 
     return {
         title,

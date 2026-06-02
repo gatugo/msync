@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&family=Google+Sans+Text:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap');
 @import "tailwindcss";
 @variant dark (&:where(.dark, .dark *));
 
@@ -13,16 +14,25 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-sans: "Google Sans Text", "Google Sans", system-ui, -apple-system, sans-serif;
+  --font-display: "Google Sans", system-ui, -apple-system, sans-serif;
 }
 
 body {
-  background: var(--background);
+  background: radial-gradient(circle at top, #1e293b 0%, #0f172a 100%);
   color: var(--foreground);
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
 }
+
+/* Global Heading styles utilizing Google Sans display font */
+h1, h2, h3, h4, h5, h6, .font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
 
 /* Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
@@ -45,6 +55,16 @@ body {
   background: rgba(255, 255, 255, 0.3);
 }
 
+/* Hide scrollbar for Chrome, Safari and Opera */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+/* Hide scrollbar for IE, Edge and Firefox */
+.scrollbar-none {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
 /* Kanban Mobile Snap */
 .kanban-snap-container {
   scroll-snap-type: x mandatory;
@@ -58,24 +78,41 @@ body {
 
 /* Glassmorphism Refinements */
 .glass-panel {
-  background: rgba(30, 41, 59, 0.4);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 .glass-panel-hover:hover {
-  background: rgba(30, 41, 59, 0.6);
-  border-color: rgba(92, 103, 255, 0.3);
+  background: rgba(30, 41, 59, 0.8);
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.15);
 }
 
-/* Task Card Hover Animation */
+/* Premium Task Card Hover Animation */
 .task-card-hover {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .task-card-hover:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Neon Glows */
+.neon-border-blue {
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow: inset 0 0 10px rgba(59, 130, 246, 0.1), 0 0 10px rgba(59, 130, 246, 0.2);
+}
+.neon-border-pink {
+  border-color: rgba(236, 72, 153, 0.5);
+  box-shadow: inset 0 0 10px rgba(236, 72, 153, 0.1), 0 0 10px rgba(236, 72, 153, 0.2);
+}
+.neon-border-green {
+  border-color: rgba(16, 185, 129, 0.5);
+  box-shadow: inset 0 0 10px rgba(16, 185, 129, 0.1), 0 0 10px rgba(16, 185, 129, 0.2);
 }
 
 /* Material Icons sizing helper */
@@ -148,3 +185,220 @@ body {
 .dark input[type="time"]::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
 }
+
+/* --- PREMIUM LEVEL UP: MIND AURA ANIMATIONS & SVG RINGS --- */
+
+@keyframes aura-float-1 {
+  0% {
+    transform: translate(0px, 0px) scale(1) rotate(0deg);
+  }
+  33% {
+    transform: translate(40px, -60px) scale(1.15) rotate(120deg);
+  }
+  66% {
+    transform: translate(-30px, 30px) scale(0.85) rotate(240deg);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1) rotate(360deg);
+  }
+}
+
+@keyframes aura-float-2 {
+  0% {
+    transform: translate(0px, 0px) scale(1.1) rotate(0deg);
+  }
+  50% {
+    transform: translate(-60px, 50px) scale(0.9) rotate(-180deg);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1.1) rotate(-360deg);
+  }
+}
+
+@keyframes aura-float-3 {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  50% {
+    transform: translate(50px, 40px) scale(1.2);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+.aura-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(140px);
+  pointer-events: none;
+  mix-blend-mode: plus-lighter;
+  transition: opacity 1.5s cubic-bezier(0.25, 0.8, 0.25, 1), transform 1.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+  will-change: transform, opacity;
+}
+
+.animate-aura-1 {
+  animation: aura-float-1 30s infinite alternate ease-in-out;
+}
+
+.animate-aura-2 {
+  animation: aura-float-2 35s infinite alternate ease-in-out;
+}
+
+.animate-aura-3 {
+  animation: aura-float-3 25s infinite alternate ease-in-out;
+}
+
+/* Concentric Rings Styles */
+.concentric-ring-circle {
+  transition: stroke-dashoffset 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Glow effects for active state rings */
+.ring-glow-blue {
+  filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.6));
+}
+.ring-glow-pink {
+  filter: drop-shadow(0 0 4px rgba(236, 72, 153, 0.6));
+}
+.ring-glow-green {
+  filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.6));
+}
+
+/* --- 2026 FUTURISTIC CHATBOT & GLOW AESTHETICS --- */
+
+@keyframes fluid-morph {
+  0% {
+    border-radius: 42% 58% 70% 30% / 45% 45% 55% 55%;
+    transform: rotate(0deg);
+  }
+  33% {
+    border-radius: 70% 30% 52% 48% / 60% 40% 60% 40%;
+    transform: rotate(120deg);
+  }
+  66% {
+    border-radius: 28% 72% 37% 63% / 40% 60% 40% 60%;
+    transform: rotate(240deg);
+  }
+  100% {
+    border-radius: 42% 58% 70% 30% / 45% 45% 55% 55%;
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes cognitive-pulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 25px rgba(99, 102, 241, 0.35)) drop-shadow(0 0 50px rgba(139, 92, 246, 0.15));
+  }
+  50% {
+    transform: scale(1.06);
+    filter: drop-shadow(0 0 40px rgba(99, 102, 241, 0.55)) drop-shadow(0 0 70px rgba(236, 72, 153, 0.3));
+  }
+}
+
+@keyframes glow-wave {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+
+.cognitive-core {
+  animation: fluid-morph 15s infinite linear, cognitive-pulse 4s infinite ease-in-out;
+  background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+  position: relative;
+}
+
+.cognitive-core::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: inherit;
+  background: inherit;
+  opacity: 0.2;
+  filter: blur(10px);
+  z-index: -1;
+}
+
+.glow-wave-element {
+  animation: glow-wave 3s infinite cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 9999px;
+  position: absolute;
+  pointer-events: none;
+}
+
+/* Glass card subtle border glows */
+.glow-card-hover {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glow-card-hover:hover {
+  border-color: rgba(99, 102, 241, 0.3) !important;
+  box-shadow: 0 0 30px -5px rgba(99, 102, 241, 0.15), inset 0 0 12px rgba(255, 255, 255, 0.02) !important;
+  transform: translateY(-2px);
+}
+
+.user-message-glow {
+  box-shadow: 0 4px 20px -2px rgba(99, 102, 241, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.08);
+}
+
+.assistant-message-glow {
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* Neon outlines for suggestions */
+.suggestion-neon-blue {
+  border-color: rgba(59, 130, 246, 0.2);
+  box-shadow: 0 4px 20px -5px rgba(59, 130, 246, 0.1), inset 0 0 10px rgba(59, 130, 246, 0.02);
+}
+.suggestion-neon-blue:hover {
+  border-color: rgba(59, 130, 246, 0.5) !important;
+  box-shadow: 0 6px 24px -3px rgba(59, 130, 246, 0.2), inset 0 0 12px rgba(59, 130, 246, 0.04) !important;
+}
+
+.suggestion-neon-pink {
+  border-color: rgba(244, 63, 94, 0.2);
+  box-shadow: 0 4px 20px -5px rgba(244, 63, 94, 0.1), inset 0 0 10px rgba(244, 63, 94, 0.02);
+}
+.suggestion-neon-pink:hover {
+  border-color: rgba(244, 63, 94, 0.5) !important;
+  box-shadow: 0 6px 24px -3px rgba(244, 63, 94, 0.2), inset 0 0 12px rgba(244, 63, 94, 0.04) !important;
+}
+
+.suggestion-neon-green {
+  border-color: rgba(16, 185, 129, 0.2);
+  box-shadow: 0 4px 20px -5px rgba(16, 185, 129, 0.1), inset 0 0 10px rgba(16, 185, 129, 0.02);
+}
+.suggestion-neon-green:hover {
+  border-color: rgba(16, 185, 129, 0.5) !important;
+  box-shadow: 0 6px 24px -3px rgba(16, 185, 129, 0.2), inset 0 0 12px rgba(16, 185, 129, 0.04) !important;
+}
+
+/* Modern details arrow and summaries */
+details summary::-webkit-details-marker {
+  display: none;
+}
+details summary {
+  list-style: none;
+}
+
+/* 2026 Asymmetric curves hover scaling */
+.user-message-glow, .assistant-message-glow {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.user-message-glow:hover {
+  transform: translateY(-1px) scale(1.005);
+  box-shadow: 0 12px 30px -4px rgba(99, 102, 241, 0.55), inset 0 1px 1px rgba(255, 255, 255, 0.12);
+}
+.assistant-message-glow:hover {
+  transform: translateY(-1px) scale(1.005);
+  background: rgba(255, 255, 255, 0.02) !important;
+  box-shadow: 0 15px 45px -12px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+

@@ -490,7 +490,7 @@ ${insight}
                     <div className="relative group">
                         <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500 to-fuchsia-500 rounded-xl blur-md opacity-60 group-hover:opacity-100 transition-opacity animate-pulse" />
                         <div className="relative w-10 h-10 bg-gradient-to-br from-indigo-500 via-purple-500 to-fuchsia-600 rounded-xl flex items-center justify-center shadow-xl shadow-indigo-500/20 border border-white/20 overflow-hidden">
-                            <div className="absolute inset-0 bg-[url('/noise.png')] opacity-15 mix-blend-overlay"></div>
+
                             <FlowerOfLifeIcon className="w-[33px] h-[33px] text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]" />
                         </div>
                     </div>

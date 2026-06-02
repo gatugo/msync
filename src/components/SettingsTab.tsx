@@ -152,9 +152,17 @@ export default function SettingsTab({ showGoals, setShowGoals, handleImport, han
 
             {/* Brain Personalization (Glass Accordion) */}
             <div className={`bg-white/50 dark:bg-slate-900/40 backdrop-blur-2xl rounded-2xl overflow-hidden transition-all duration-500 border border-slate-200/50 dark:border-white/10 glow-card-hover ${isPersonalizationOpen ? 'shadow-2xl shadow-indigo-500/10' : ''}`}>
-                <button
+                <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setIsPersonalizationOpen(!isPersonalizationOpen)}
-                    className="w-full flex items-center justify-between p-5 hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setIsPersonalizationOpen(!isPersonalizationOpen);
+                        }
+                    }}
+                    className="w-full flex items-center justify-between p-5 hover:bg-slate-50 dark:hover:bg-white/5 transition-all cursor-pointer select-none"
                 >
                     <div className="flex items-center gap-4">
                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-lg ${isPersonalizationOpen ? 'bg-indigo-500 text-white shadow-indigo-500/40 rotate-[360deg]' : 'bg-indigo-500/10 text-indigo-500'}`}>
@@ -169,12 +177,14 @@ export default function SettingsTab({ showGoals, setShowGoals, handleImport, han
                     <div className="flex items-center gap-3">
                         {/* Save Indicator */}
                         {(tempPrefs !== preferences) && (
-                            <div
+                            <button
+                                type="button"
+                                id="settings-save-button"
                                 onClick={(e) => { e.stopPropagation(); handleSavePrefs(); }}
-                                className="flex items-center gap-2 bg-indigo-500 text-white px-4 py-2 rounded-xl shadow-lg shadow-indigo-500/30 animate-pulse hover:bg-indigo-600 transition-all cursor-pointer mr-1 active:scale-95"
+                                className="flex items-center gap-2 bg-indigo-500 text-white px-4 py-2 rounded-xl shadow-lg shadow-indigo-500/30 animate-pulse hover:bg-indigo-600 transition-all cursor-pointer mr-1 active:scale-95 border-none outline-none"
                             >
                                 <span className="text-[10px] font-black uppercase tracking-widest">Save</span>
-                            </div>
+                            </button>
                         )}
 
                         {!user && (
@@ -190,7 +200,7 @@ export default function SettingsTab({ showGoals, setShowGoals, handleImport, han
                             expand_more
                         </span>
                     </div>
-                </button>
+                </div>
 
                 <div className={`transition-[max-height,opacity] duration-500 ease-in-out ${isPersonalizationOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
                     <div className="p-6 pt-0 border-t border-slate-200/50 dark:border-white/5 space-y-8">

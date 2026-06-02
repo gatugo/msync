@@ -385,9 +385,11 @@ export default function Home() {
                 }
                 lastScrollTopStatsRef.current = scrollTop;
               }}
-              className="h-full overflow-y-auto pb-32 custom-scrollbar"
+              className="h-full overflow-y-auto px-4 sm:px-6 custom-scrollbar scroll-smooth"
             >
-              <ProgressChart history={history} />
+              <div className="max-w-3xl mx-auto w-full pb-32 sm:pb-40 pt-6">
+                <ProgressChart history={history} />
+              </div>
             </div>
           )}
 

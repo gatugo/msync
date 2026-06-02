@@ -92,9 +92,9 @@ export default function SettingsTab({ showGoals, setShowGoals, handleImport, han
     return (
         <div 
             onScroll={handleScroll}
-            className="h-full p-4 sm:p-6 relative overflow-y-auto pb-32 custom-scrollbar"
+            className="h-full p-4 sm:p-6 relative overflow-y-auto custom-scrollbar scroll-smooth"
         >
-            <div className="max-w-3xl mx-auto w-full space-y-6">
+            <div className="max-w-3xl mx-auto w-full space-y-6 pb-32 sm:pb-40">
                 <div className="flex items-center justify-between">
                     <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Settings</h2>
                 </div>
@@ -339,14 +339,17 @@ export default function SettingsTab({ showGoals, setShowGoals, handleImport, han
             </div>
 
             {/* App Footer Branding */}
-            <div className="text-center pt-8 opacity-40 hover:opacity-100 transition-opacity duration-700">
-                <div className="flex items-center justify-center gap-2 mb-1">
-                    <span className="material-icons-round text-xl bg-gradient-to-br from-indigo-500 to-purple-500 text-transparent bg-clip-text">psychology</span>
-                    <p className="text-sm font-black tracking-[0.3em] uppercase dark:text-white">MindSync</p>
+            <div className="text-center pt-12 pb-8 mt-8 border-t border-slate-200/50 dark:border-white/5 opacity-50 hover:opacity-100 transition-opacity duration-700">
+                <div className="flex items-center justify-center gap-2 mb-2 relative group">
+                    <div className="absolute inset-0 bg-indigo-500/20 blur-xl rounded-full scale-0 group-hover:scale-150 transition-transform duration-700" />
+                    <span className="material-icons-round text-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-transparent bg-clip-text relative">psychology</span>
+                    <p className="text-base font-black tracking-[0.4em] uppercase text-slate-900 dark:text-white relative">MindSync</p>
                 </div>
-                <p className="text-[9px] font-black uppercase tracking-[0.5em] text-slate-400">Sync. Focus. Flow.</p>
-                <div className="mt-4 text-[8px] font-bold text-slate-500/50 uppercase tracking-widest">
-                    MindSync &copy; 2026
+                <p className="text-[10px] font-black uppercase tracking-[0.6em] bg-gradient-to-r from-indigo-400 to-pink-400 text-transparent bg-clip-text mt-1">Sync. Focus. Flow.</p>
+                <div className="mt-6 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] flex items-center justify-center gap-2">
+                    <span className="w-8 h-px bg-slate-200 dark:bg-slate-700" />
+                    <span>MindSync &copy; {new Date().getFullYear()}</span>
+                    <span className="w-8 h-px bg-slate-200 dark:bg-slate-700" />
                 </div>
             </div>
 

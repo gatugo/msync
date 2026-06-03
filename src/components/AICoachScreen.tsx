@@ -65,6 +65,7 @@ export default function AICoachScreen({
     onEditTask
 }: AICoachScreenProps) {
     const [mode, setMode] = useState<CoachMode>(initialMode);
+    const [isHudOpen, setIsHudOpen] = useState(true);
     const [summaryInterval, setSummaryInterval] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
     const displayMode = (mode === 'morning_brief' || mode === 'evening_recap' || mode === 'night_reflection') ? 'evening_recap' : mode;
     const [question, setQuestion] = useState('');
@@ -286,17 +287,17 @@ export default function AICoachScreen({
         const currentQuestion = overrideQuestion || question;
 
         if (activeMode === 'chat' && currentQuestion.trim()) {
-            setMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', content: currentQuestion, timestamp: new Date() }]);
+            setMessages(prev => [...prev, { id: `user-${Date.now()}-${Math.random()}`, role: 'user', content: currentQuestion, timestamp: new Date() }]);
             setQuestion('');
         } else if (activeMode === 'evening_recap' && !overrideQuestion) {
-            setMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', content: 'Please give me an Evening Recap of my day.', timestamp: new Date() }]);
+            setMessages(prev => [...prev, { id: `user-${Date.now()}-${Math.random()}`, role: 'user', content: 'Please give me an Evening Recap of my day.', timestamp: new Date() }]);
         } else if (activeMode === 'morning_brief' && !overrideQuestion) {
-            setMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', content: 'Please give me a Morning Briefing for my day.', timestamp: new Date() }]);
+            setMessages(prev => [...prev, { id: `user-${Date.now()}-${Math.random()}`, role: 'user', content: 'Please give me a Morning Briefing for my day.', timestamp: new Date() }]);
         } else if (activeMode === 'night_reflection' && !overrideQuestion) {
-            setMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', content: 'Please give me a Night Reflection for my day.', timestamp: new Date() }]);
+            setMessages(prev => [...prev, { id: `user-${Date.now()}-${Math.random()}`, role: 'user', content: 'Please give me a Night Reflection for my day.', timestamp: new Date() }]);
         }
 
-        const aiMsgId = (Date.now() + 1).toString();
+        const aiMsgId = `ai-${Date.now()}-${Math.random()}`;
 
         // Add placeholder assistant message immediately for better UX
         if (activeMode === 'chat') {
@@ -378,7 +379,7 @@ export default function AICoachScreen({
     };
 
     const runOfflineLogic = async (activeMode: CoachMode, input: string, overrideInterval?: 'daily' | 'weekly' | 'monthly', existingMsgId?: string) => {
-        const aiMsgId = existingMsgId || (Date.now() + 1).toString();
+        const aiMsgId = existingMsgId || `ai-${Date.now()}-${Math.random()}`;
         await new Promise(resolve => setTimeout(resolve, 600));
 
         if (!existingMsgId || activeMode !== 'chat') {
@@ -535,7 +536,7 @@ ${insight}
                             if (newMode !== 'chat') handleAskCoach(newMode);
                         }
                     }}
-                    containerClassName="hidden md:flex bg-slate-950/50 p-1.5 rounded-2xl border border-white/10 relative overflow-x-auto scrollbar-none backdrop-blur-md max-w-2xl flex-1 gap-1"
+                    containerClassName="hidden md:flex items-center bg-slate-950/50 p-1.5 rounded-2xl border border-white/10 relative overflow-x-auto scrollbar-none backdrop-blur-md max-w-2xl flex-1 gap-1"
                     buttonClassName="shrink-0 flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-[10.5px] md:text-[11px] font-extrabold uppercase tracking-widest transition-all duration-300 relative z-10 whitespace-nowrap"
                     labelVisibilityClass="hidden xl:inline whitespace-nowrap"
                     shortLabelVisibilityClass="inline xl:hidden whitespace-nowrap"
@@ -543,6 +544,12 @@ ${insight}
 
                 {/* Right Side: Clear & Exit Actions */}
                 <div className="flex items-center gap-1.5 shrink-0">
+                    <button 
+                        onClick={() => setIsHudOpen(!isHudOpen)} 
+                        className={`p-2 rounded-xl border transition-all active:scale-90 flex items-center justify-center hidden lg:flex ${isHudOpen ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400 hover:bg-indigo-500/20 hover:border-indigo-500/40' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white hover:border-white/20'}`} 
+                        title="Toggle Diagnostics">
+                        <Activity className="w-4.5 h-4.5" />
+                    </button>
                     {messages.length > 0 && (
                         <button onClick={clearChat} className="p-2 rounded-xl hover:bg-white/10 text-white/40 hover:text-red-400 transition-all active:scale-90" title="Clear Chat">
                             <Trash2 className="w-4.5 h-4.5" />
@@ -581,7 +588,7 @@ ${insight}
                                     if (newMode !== 'chat') handleAskCoach(newMode);
                                 }
                             }}
-                            containerClassName="flex bg-slate-950/50 p-1.5 rounded-2xl border border-white/10 relative overflow-x-auto scrollbar-none backdrop-blur-md gap-1"
+                            containerClassName="flex items-center bg-slate-950/50 p-1.5 rounded-2xl border border-white/10 relative overflow-x-auto scrollbar-none backdrop-blur-md gap-1"
                             buttonClassName="shrink-0 flex-1 flex items-center justify-center gap-2 py-2.5 px-3.5 rounded-xl text-[11px] font-extrabold uppercase tracking-widest transition-all duration-300 relative z-10 whitespace-nowrap"
                             labelVisibilityClass="hidden sm:inline whitespace-nowrap"
                             shortLabelVisibilityClass="inline sm:hidden whitespace-nowrap"
@@ -688,10 +695,10 @@ ${insight}
                                     <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-lg border border-white/10 transition-transform hover:scale-105 duration-300 ${msg.role === 'user' ? 'bg-gradient-to-tr from-indigo-700 via-indigo-600 to-indigo-500' : 'bg-gradient-to-br from-purple-600 to-indigo-600'}`}>
                                         {msg.role === 'user' ? <FuturisticUserIcon className="w-[34px] h-[34px] text-white" /> : <FlowerOfLifeIcon className="w-[34px] h-[34px] text-white" />}
                                     </div>
-                                    <div className={`relative max-w-[82%] border transition-all duration-300 group ${
+                                    <div className={`relative max-w-[85%] border transition-all duration-300 group ${
                                         msg.role === 'user' 
-                                            ? 'bg-gradient-to-tr from-indigo-500 via-indigo-600 to-purple-600 border-indigo-500/30 text-white rounded-[24px] rounded-br-[4px] shadow-[0_8px_25px_-5px_rgba(99,102,241,0.45)] user-message-glow font-semibold px-5 py-3' 
-                                            : 'bg-white/[0.04] dark:bg-white/[0.02] backdrop-blur-2xl border-white/10 text-slate-100 rounded-[28px] rounded-tl-[4px] shadow-[0_15px_50px_-15px_rgba(0,0,0,0.6)] assistant-message-glow hover:border-white/20 pl-6 pr-5 py-3'
+                                            ? 'bg-gradient-to-tr from-indigo-500 via-indigo-600 to-purple-600 border-indigo-500/30 text-white rounded-[24px] rounded-br-[4px] shadow-[0_8px_25px_-5px_rgba(99,102,241,0.45)] user-message-glow font-semibold px-4 py-2.5' 
+                                            : 'bg-white/[0.04] dark:bg-white/[0.02] backdrop-blur-2xl border-white/10 text-slate-100 rounded-[28px] rounded-tl-[4px] shadow-[0_15px_50px_-15px_rgba(0,0,0,0.6)] assistant-message-glow hover:border-white/20 pl-5 pr-4 py-2.5'
                                     }`}>
                                         {/* Glowing Pulse Accent Strip for Assistant Bubble */}
                                         {msg.role === 'assistant' && (
@@ -704,19 +711,19 @@ ${insight}
                                         
                                         {/* Collapsible Thoughts (o1/Claude 3.7 style reasoning panel) */}
                                         {msg.thought && (
-                                            <div className="mt-3.5 flex flex-col items-center justify-center">
+                                            <div className="mt-2 flex flex-col items-center justify-center">
                                                 <details className="group w-full max-w-md transition-all duration-500 ease-in-out">
-                                                    <summary className="mx-auto w-fit flex items-center gap-2 px-4 py-1.5 rounded-full border border-indigo-500/25 bg-indigo-500/10 hover:bg-indigo-500/20 hover:border-indigo-500/40 text-indigo-300 font-bold select-none text-[11px] uppercase tracking-wider cursor-pointer transition-all duration-300 shadow-[0_2px_10px_rgba(99,102,241,0.1)] hover:scale-105 active:scale-95 list-none [&::-webkit-details-marker]:hidden">
+                                                    <summary className="mx-auto w-fit flex items-center gap-2 px-3 py-1 rounded-full border border-indigo-500/25 bg-indigo-500/10 hover:bg-indigo-500/20 hover:border-indigo-500/40 text-indigo-300 font-bold select-none text-[10px] uppercase tracking-wider cursor-pointer transition-all duration-300 shadow-[0_2px_10px_rgba(99,102,241,0.1)] hover:scale-105 active:scale-95 list-none [&::-webkit-details-marker]:hidden">
                                                         <div className="relative flex items-center justify-center">
                                                             <div className="absolute inset-0 bg-indigo-500/30 rounded-full blur-[3px] animate-pulse" />
                                                             <Brain className="w-3.5 h-3.5 text-indigo-400 relative z-10" />
                                                         </div>
                                                         <span className="leading-none mt-0.5">Cognitive Process</span>
-                                                        <span className="text-[9px] text-slate-400 group-open:hidden uppercase font-black px-1.5 py-0.5 rounded-full bg-white/5 border border-white/10 ml-1">Expand</span>
-                                                        <span className="text-[9px] text-indigo-300 hidden group-open:inline uppercase font-black px-1.5 py-0.5 rounded-full bg-indigo-500/25 border border-indigo-500/30 ml-1">Active</span>
+                                                        <span className="text-[8px] text-slate-400 group-open:hidden uppercase font-black px-1.5 py-0.5 rounded-full bg-white/5 border border-white/10 ml-1">Expand</span>
+                                                        <span className="text-[8px] text-indigo-300 hidden group-open:inline uppercase font-black px-1.5 py-0.5 rounded-full bg-indigo-500/25 border border-indigo-500/30 ml-1">Active</span>
                                                         <ChevronDown className="w-3 h-3 text-indigo-300/70 group-open:rotate-180 transition-transform duration-300 ml-0.5" />
                                                     </summary>
-                                                    <div className="px-3.5 pb-3.5 pt-2.5 text-slate-300/85 leading-relaxed max-h-44 overflow-y-auto custom-scrollbar font-mono text-[11px] whitespace-pre-wrap bg-slate-950/45 rounded-2xl border border-white/5 backdrop-blur-md mt-2.5 italic animate-in slide-in-from-top-2 duration-300 shadow-inner">
+                                                    <div className="px-3 pb-3 pt-2 text-slate-300/85 leading-relaxed max-h-32 overflow-y-auto custom-scrollbar font-mono text-[10px] whitespace-pre-wrap bg-slate-950/45 rounded-xl border border-white/5 backdrop-blur-md mt-2 italic animate-in slide-in-from-top-2 duration-300 shadow-inner">
                                                         <div className="flex gap-2 opacity-50 mb-1.5 justify-center">
                                                             <div className="w-1 h-1 rounded-full bg-indigo-500 animate-ping mt-1" />
                                                             <span className="text-[9px] uppercase tracking-tighter">Trace Initiated...</span>
@@ -851,18 +858,18 @@ ${insight}
                     {/* Floating Input command capsule */}
                     <div className="px-5 py-4 shrink-0 bg-gradient-to-t from-slate-950/20 to-transparent z-10 relative">
                         {/* Quick Prompts Capsules Row */}
-                        <div className="flex gap-2 items-center overflow-x-auto custom-scrollbar pb-3 max-w-3xl mx-auto pl-1">
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap mr-1">Prompts:</span>
-                            <button onClick={() => handleTriggerPrompt("Analyze my today's balance")} className="text-[10px] font-bold px-3 py-1.5 rounded-full border border-indigo-500/20 bg-indigo-500/[0.04] text-indigo-300 hover:bg-indigo-500/10 hover:border-indigo-500/40 transition-all active:scale-95 whitespace-nowrap">
+                        <div className="flex gap-2 items-center overflow-x-auto custom-scrollbar pb-2 max-w-3xl mx-auto pl-1">
+                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap mr-1">Prompts:</span>
+                            <button onClick={() => handleTriggerPrompt("Analyze my today's balance")} className="text-[9px] font-bold px-2.5 py-1 rounded-full border border-indigo-500/20 bg-indigo-500/[0.04] text-indigo-300 hover:bg-indigo-500/10 hover:border-indigo-500/40 transition-all active:scale-95 whitespace-nowrap">
                                 🧠 Analyze Balance
                             </button>
-                            <button onClick={() => handleTriggerPrompt("Suggest a child joy task")} className="text-[10px] font-bold px-3 py-1.5 rounded-full border border-pink-500/20 bg-pink-500/[0.04] text-pink-300 hover:bg-pink-500/10 hover:border-pink-500/40 transition-all active:scale-95 whitespace-nowrap">
+                            <button onClick={() => handleTriggerPrompt("Suggest a child joy task")} className="text-[9px] font-bold px-2.5 py-1 rounded-full border border-pink-500/20 bg-pink-500/[0.04] text-pink-300 hover:bg-pink-500/10 hover:border-pink-500/40 transition-all active:scale-95 whitespace-nowrap">
                                 🩷 Suggest Play Task
                             </button>
-                            <button onClick={() => handleTriggerPrompt("Propose a perfect plan")} className="text-[10px] font-bold px-3 py-1.5 rounded-full border border-purple-500/20 bg-purple-500/[0.04] text-purple-300 hover:bg-purple-500/10 hover:border-purple-500/40 transition-all active:scale-95 whitespace-nowrap">
+                            <button onClick={() => handleTriggerPrompt("Propose a perfect plan")} className="text-[9px] font-bold px-2.5 py-1 rounded-full border border-purple-500/20 bg-purple-500/[0.04] text-purple-300 hover:bg-purple-500/10 hover:border-purple-500/40 transition-all active:scale-95 whitespace-nowrap">
                                 📅 Propose 24h Plan
                             </button>
-                            <button onClick={() => handleTriggerPrompt("Need a recovery rest break")} className="text-[10px] font-bold px-3 py-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/[0.04] text-emerald-300 hover:bg-emerald-500/10 hover:border-emerald-500/40 transition-all active:scale-95 whitespace-nowrap">
+                            <button onClick={() => handleTriggerPrompt("Need a recovery rest break")} className="text-[9px] font-bold px-2.5 py-1 rounded-full border border-emerald-500/20 bg-emerald-500/[0.04] text-emerald-300 hover:bg-emerald-500/10 hover:border-emerald-500/40 transition-all active:scale-95 whitespace-nowrap">
                                 🟢 recovery break
                             </button>
                         </div>
@@ -875,6 +882,8 @@ ${insight}
                             <div className="relative flex items-end gap-3 bg-[#1e293b]/90 backdrop-blur-2xl rounded-[28px] border border-white/10 p-2 shadow-[0_8px_30px_rgb(0,0,0,0.4)] transition-all">
                                 <div className="flex-1 relative pl-4 pt-1.5 pb-1">
                                     <textarea
+                                        id="chatInput"
+                                        name="chatInput"
                                         rows={1}
                                         value={question}
                                         onChange={(e) => setQuestion(e.target.value)}
@@ -905,7 +914,8 @@ ${insight}
                 </div>
 
                 {/* RIGHT COLUMN: Interactive Diagnostics HUD (Desktop Space Optimization) */}
-                <div className="hidden lg:flex flex-col w-[370px] h-full bg-slate-950/20 backdrop-blur-xl border-l border-white/5 p-6 overflow-y-auto custom-scrollbar gap-6 shrink-0 relative z-10">
+                {isHudOpen && (
+                <div className="hidden lg:flex flex-col w-[370px] h-full bg-slate-950/20 backdrop-blur-xl border-l border-white/5 p-6 overflow-y-auto custom-scrollbar gap-6 shrink-0 relative z-10 transition-all duration-300 origin-right">
                     
                     {/* Header Widget */}
                     <div className="flex items-center gap-2.5 border-b border-white/5 pb-4 shrink-0">
@@ -1072,6 +1082,8 @@ ${insight}
                         {isQuickAddOpen && (
                             <div className="p-3.5 bg-slate-900/60 rounded-xl border border-white/10 space-y-2.5 animate-in slide-in-from-top-2 duration-200">
                                 <input 
+                                    id="quickAddTitle"
+                                    name="quickAddTitle"
                                     type="text"
                                     value={quickAddTitle}
                                     onChange={(e) => { setQuickAddTitle(e.target.value); setQuickAddError(''); }}
@@ -1099,6 +1111,8 @@ ${insight}
                                     </div>
                                     <div className="flex items-center gap-1.5 bg-slate-950/40 border border-white/5 rounded-lg px-2 py-1">
                                         <input 
+                                            id="quickAddDuration"
+                                            name="quickAddDuration"
                                             type="number"
                                             value={quickAddDuration}
                                             onChange={(e) => setQuickAddDuration(Number(e.target.value))}
@@ -1208,6 +1222,7 @@ ${insight}
                     )}
 
                 </div>
+                )}
 
             </div>
         </div>

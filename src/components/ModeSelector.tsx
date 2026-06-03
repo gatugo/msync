@@ -22,7 +22,7 @@ export default function ModeSelector<T extends string>({
     modes,
     currentMode,
     onModeChange,
-    containerClassName = "flex bg-slate-950/50 p-1.5 rounded-2xl border border-white/10 relative overflow-hidden backdrop-blur-md gap-1.5",
+    containerClassName = "flex items-center bg-slate-950/50 p-1.5 rounded-2xl border border-white/10 relative overflow-hidden backdrop-blur-md gap-1.5",
     buttonClassName = "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[11px] font-extrabold uppercase tracking-widest transition-all duration-300 relative z-10 whitespace-nowrap",
     labelVisibilityClass = "hidden sm:inline whitespace-nowrap",
     shortLabelVisibilityClass = "inline sm:hidden whitespace-nowrap"

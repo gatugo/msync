@@ -420,7 +420,7 @@ export default function TimelineView({
                                             <div key={task.id}
                                                 draggable
                                                 onDragStart={(e) => handleDragStart(e, task.id)}
-                                                className={`backdrop-blur-[20px] task-card-hover rounded-xl p-2.5 group flex gap-2 overflow-hidden min-w-[130px] sm:min-w-[210px] flex-1 shrink-0 ${typeClasses[task.type]} ${task.status === 'DONE' ? 'opacity-50 grayscale-[0.5]' : ''}`}
+                                                className={`backdrop-blur-[20px] task-card-hover rounded-xl p-2.5 group flex gap-2 overflow-hidden w-[calc(100%-0.5rem)] sm:w-[calc(50%-0.25rem)] lg:w-[calc(33.333%-0.34rem)] shrink-0 ${typeClasses[task.type]} ${task.status === 'DONE' ? 'opacity-50 grayscale-[0.5]' : ''}`}
                                                 style={{ minHeight: `${(task.duration || 30) / 30 * 60}px` }}
                                             >
                                                 {/* Inline Complete Button */}

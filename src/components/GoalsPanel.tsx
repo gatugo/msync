@@ -167,7 +167,7 @@ export default function GoalsPanel({
             )}
 
             {/* Goals List */}
-            <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar pr-1 pb-2">
+            <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar pr-1 pb-32">
                 {activeGoals.length === 0 && !isAdding && (
                     <div className="flex flex-col items-center justify-start pt-2 md:pt-3 p-6 text-center animate-in fade-in zoom-in-95 duration-1000">
                         <div className="relative mb-5 group">

@@ -6,20 +6,41 @@ import Link from 'next/link';
 import { useStore } from '@/store/useStore';
 import { useRouter } from 'next/navigation';
 import TimePicker from './TimePicker';
+import { Database, FlaskConical } from 'lucide-react';
+
+function DataLabIcon({ className = "w-6 h-6", isLarge = false }: { className?: string; isLarge?: boolean }) {
+    return (
+        <div className={`relative flex items-center justify-center ${className}`}>
+            {/* Outer glowing background ring with pulsing gradient */}
+            <div className={`absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-2xl opacity-20 blur-md ${isLarge ? 'animate-pulse' : ''}`} />
+            
+            {/* Beautiful, futuristic combined icon design */}
+            <div className="relative z-10 flex items-center justify-center">
+                {/* Database icon as the back layer / structure */}
+                <Database className={`text-indigo-400 stroke-[1.5] ${isLarge ? 'w-10 h-10 drop-shadow-[0_0_8px_rgba(99,102,241,0.6)]' : 'w-6 h-6 drop-shadow-[0_0_4px_rgba(99,102,241,0.4)]'}`} />
+                
+                {/* Laboratory beaker overlaid with modern glassmorphism aesthetic */}
+                <div className={`absolute ${isLarge ? 'translate-x-2.5 translate-y-2.5' : 'translate-x-1.5 translate-y-1.5'}`}>
+                    <div className="flex items-center justify-center rounded-lg bg-slate-900/90 border border-indigo-500/30 p-1 shadow-lg backdrop-blur-md">
+                        <FlaskConical className={`text-pink-400 stroke-[2] ${isLarge ? 'w-5 h-5' : 'w-3.5 h-3.5'}`} />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 interface SettingsTabProps {
-    showGoals: boolean;
-    setShowGoals: (show: boolean) => void;
     handleImport: () => void;
     handleExport: () => void;
     onScrollDirectionChange?: (isHidden: boolean) => void;
 }
 
-export default function SettingsTab({ showGoals, setShowGoals, handleImport, handleExport, onScrollDirectionChange }: SettingsTabProps) {
+export default function SettingsTab({ handleImport, handleExport, onScrollDirectionChange }: SettingsTabProps) {
     const [user, setUser] = useState<any>(null);
     const [showDataModal, setShowDataModal] = useState(false);
     const router = useRouter();
-    const { preferences, updatePreferences, resetStore } = useStore();
+    const { preferences, updatePreferences, resetStore, clearAllData } = useStore();
 
     const [tempPrefs, setTempPrefs] = useState(preferences);
     const [isPersonalizationOpen, setIsPersonalizationOpen] = useState(false);
@@ -94,7 +115,7 @@ export default function SettingsTab({ showGoals, setShowGoals, handleImport, han
             onScroll={handleScroll}
             className="h-full p-4 sm:p-6 relative overflow-y-auto custom-scrollbar scroll-smooth"
         >
-            <div className="max-w-5xl mx-auto w-full space-y-6 pb-32 sm:pb-40">
+            <div className="max-w-5xl mx-auto w-full space-y-6 pb-20 sm:pb-24">
                 <div className="flex items-center justify-between">
                     <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Settings</h2>
                 </div>
@@ -295,7 +316,7 @@ export default function SettingsTab({ showGoals, setShowGoals, handleImport, han
                                     ))}
                                     <input
                                         type="text"
-                                        placeholder={`+ Add ${key.slice(0, -1)}`}
+                                        placeholder={`+ Add ${key === 'work' ? 'Work' : key === 'hobbies' ? 'Hobby' : key === 'interests' ? 'Interest' : 'Passion'}`}
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter') {
                                                 handleAddTag(key, (e.target as HTMLInputElement).value);
@@ -318,8 +339,8 @@ export default function SettingsTab({ showGoals, setShowGoals, handleImport, han
                     className="flex items-center justify-between w-full p-5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
                 >
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-white/10 dark:bg-slate-800/50 flex items-center justify-center p-2.5 group-hover:scale-110 transition-transform duration-500 shadow-inner">
-                            <img src="/datalab_logo.png" alt="Data Lab" className="w-full h-full object-contain brightness-110" />
+                        <div className="w-12 h-12 rounded-2xl bg-white/10 dark:bg-slate-800/50 flex items-center justify-center group-hover:scale-110 transition-transform duration-500 shadow-inner">
+                            <DataLabIcon className="w-8 h-8" />
                         </div>
                         <div className="text-left">
                             <h3 className="font-bold text-slate-900 dark:text-white tracking-tight">Data Management</h3>
@@ -339,81 +360,109 @@ export default function SettingsTab({ showGoals, setShowGoals, handleImport, han
             </div>
 
             {/* App Footer Branding */}
-            <div className="text-center pt-12 pb-8 mt-8 border-t border-slate-200/50 dark:border-white/5 opacity-50 hover:opacity-100 transition-opacity duration-700">
-                <div className="flex items-center justify-center gap-2 mb-2 relative group">
-                    <div className="absolute inset-0 bg-indigo-500/20 blur-xl rounded-full scale-0 group-hover:scale-150 transition-transform duration-700" />
-                    <span className="material-icons-round text-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-transparent bg-clip-text relative">psychology</span>
-                    <p className="text-base font-black tracking-[0.4em] uppercase text-slate-900 dark:text-white relative">MindSync</p>
+            <div className="text-center pt-8 pb-2 mt-12 border-t border-slate-200/40 dark:border-white/5 opacity-60 hover:opacity-100 transition-opacity duration-500">
+                <div className="flex items-center justify-center gap-2 mb-1.5 relative group">
+                    <div className="absolute inset-0 bg-indigo-500/10 blur-xl rounded-full scale-0 group-hover:scale-150 transition-transform duration-700" />
+                    <span className="material-icons-round text-xl bg-gradient-to-br from-indigo-400 via-purple-400 to-pink-400 text-transparent bg-clip-text relative">psychology</span>
+                    <p className="text-sm font-black tracking-[0.3em] uppercase text-slate-800 dark:text-white relative">MindSync</p>
                 </div>
-                <p className="text-[10px] font-black uppercase tracking-[0.6em] bg-gradient-to-r from-indigo-400 to-pink-400 text-transparent bg-clip-text mt-1">Sync. Focus. Flow.</p>
-                <div className="mt-6 text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] flex items-center justify-center gap-2">
-                    <span className="w-8 h-px bg-slate-200 dark:bg-slate-700" />
-                    <span>MindSync &copy; {new Date().getFullYear()}</span>
-                    <span className="w-8 h-px bg-slate-200 dark:bg-slate-700" />
+                <p className="text-[9px] font-bold uppercase tracking-[0.5em] text-slate-400 dark:text-slate-500 mt-1">Sync. Focus. Flow.</p>
+                
+                <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3 text-[9px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest">
+                    <span>MindSync © {new Date().getFullYear()}</span>
+                    <span className="hidden sm:inline-block text-slate-300 dark:text-slate-800">|</span>
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/10 dark:border-emerald-500/20 text-emerald-600 dark:text-emerald-500">
+                        <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[8px] font-black tracking-wider">All Systems Operational</span>
+                    </div>
                 </div>
             </div>
 
             {/* Data Management Modal (Glass Focus) */}
             {showDataModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setShowDataModal(false)}>
-                    <div className="bg-slate-900 border border-white/10 w-full max-w-sm rounded-3xl shadow-2xl p-5 sm:p-7 space-y-5 sm:space-y-8 animate-in zoom-in-95 duration-300 relative overflow-hidden" onClick={e => e.stopPropagation()}>
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-[80px]" />
+                    <div className="bg-slate-900 border border-white/10 w-full max-w-xs rounded-3xl shadow-2xl p-4 sm:p-5 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300 relative overflow-hidden" onClick={e => e.stopPropagation()}>
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-[80px] pointer-events-none" />
 
-                        <div className="text-center space-y-3 relative">
-                            <div className="w-20 h-20 bg-gradient-to-br from-indigo-500/20 to-purple-600/20 rounded-3xl mx-auto flex items-center justify-center p-4 shadow-2xl shadow-indigo-500/20 rotate-3 group-hover:rotate-0 transition-all duration-500 border border-white/10 backdrop-blur-xl">
-                                <img src="/datalab_logo.png" alt="Data Lab" className="w-full h-full object-contain brightness-125 drop-shadow-[0_0_10px_rgba(99,102,241,0.5)]" />
+                        {/* Scrollable Container inside Modal */}
+                        <div className="overflow-y-auto custom-scrollbar pr-2 flex flex-col gap-4 pb-2">
+                            <div className="text-center space-y-2 relative shrink-0 pt-2">
+                                <div className="w-16 h-16 bg-gradient-to-br from-indigo-500/20 to-purple-600/20 rounded-3xl mx-auto flex items-center justify-center shadow-2xl shadow-indigo-500/20 rotate-3 group-hover:rotate-0 transition-all duration-500 border border-white/10 backdrop-blur-xl">
+                                    <DataLabIcon className="w-10 h-10" isLarge={true} />
+                                </div>
+                                <h3 className="text-xl font-black text-white tracking-tight">Data Lab</h3>
+                                <p className="text-xs text-slate-400 font-medium px-4">Maintain, back up, or restore your neural data snapshots</p>
                             </div>
-                            <h3 className="text-2xl font-black text-white tracking-tight">Data Lab</h3>
-                            <p className="text-sm text-slate-400 font-medium px-4">Maintain, back up, or restore your neural data snapshots</p>
-                        </div>
 
-                        <div className="grid grid-cols-1 gap-4 relative">
+                            <div className="grid grid-cols-1 gap-3 relative shrink-0">
+                                <button
+                                    onClick={() => { handleExport(); setShowDataModal(false); }}
+                                    className="flex items-center justify-between w-full p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all group"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform duration-300">
+                                            <span className="material-icons-round text-xl">file_upload</span>
+                                        </div>
+                                        <div className="text-left font-bold">
+                                            <div className="text-white text-sm">Export Snaps</div>
+                                            <div className="text-[9px] text-slate-500 uppercase tracking-widest">JSON Report</div>
+                                        </div>
+                                    </div>
+                                    <span className="material-icons-round text-white group-hover:translate-y-1 transition-transform">arrow_downward</span>
+                                </button>
+
+                                <button
+                                    onClick={() => { handleImport(); setShowDataModal(false); }}
+                                    className="flex items-center justify-between w-full p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all group"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform duration-300">
+                                            <span className="material-icons-round text-xl">file_download</span>
+                                        </div>
+                                        <div className="text-left font-bold">
+                                            <div className="text-white text-sm">Restore Data</div>
+                                            <div className="text-[9px] text-slate-500 uppercase tracking-widest">Neural Sync</div>
+                                        </div>
+                                    </div>
+                                    <span className="material-icons-round text-white group-hover:-translate-y-1 transition-transform">arrow_upward</span>
+                                </button>
+
+                                <button
+                                    onClick={async () => {
+                                        if (confirm('Are you sure you want to completely erase all your data (tasks, history, memory, goals)? This action cannot be undone.')) {
+                                            await clearAllData();
+                                            setShowDataModal(false);
+                                            alert('All data has been erased.');
+                                        }
+                                    }}
+                                    className="flex items-center justify-between w-full p-4 rounded-2xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 transition-all group"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center text-red-400 group-hover:scale-110 transition-transform duration-300">
+                                            <span className="material-icons-round text-xl">delete_forever</span>
+                                        </div>
+                                        <div className="text-left font-bold">
+                                            <div className="text-red-400 text-sm">Erase All Data</div>
+                                            <div className="text-[9px] text-red-500/70 uppercase tracking-widest">Wipe Neural Core</div>
+                                        </div>
+                                    </div>
+                                </button>
+                            </div>
+
+                            <div className="p-3 bg-amber-500/10 rounded-2xl border border-amber-500/20 flex gap-3 items-center text-left shrink-0">
+                                <span className="material-icons-round text-amber-500 text-xl flex-shrink-0 w-6 h-6 flex items-center justify-center select-none">warning</span>
+                                <p className="text-[10px] font-bold text-amber-200/80 leading-snug">
+                                    Neural Sync will <span className="text-amber-400 uppercase tracking-widest">overwrite</span> current state.
+                                </p>
+                            </div>
+
                             <button
-                                onClick={() => { handleExport(); setShowDataModal(false); }}
-                                className="flex items-center justify-between w-full p-5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all group"
+                                onClick={() => setShowDataModal(false)}
+                                className="w-full py-3 shrink-0 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
                             >
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform duration-300">
-                                        <span className="material-icons-round text-2xl">file_upload</span>
-                                    </div>
-                                    <div className="text-left font-bold">
-                                        <div className="text-white text-base">Export Snaps</div>
-                                        <div className="text-[10px] text-slate-500 uppercase tracking-widest">JSON Report</div>
-                                    </div>
-                                </div>
-                                <span className="material-icons-round text-white group-hover:translate-y-1 transition-transform">arrow_downward</span>
-                            </button>
-
-                            <button
-                                onClick={() => { handleImport(); setShowDataModal(false); }}
-                                className="flex items-center justify-between w-full p-5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all group"
-                            >
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform duration-300">
-                                        <span className="material-icons-round text-2xl">file_download</span>
-                                    </div>
-                                    <div className="text-left font-bold">
-                                        <div className="text-white text-base">Restore Data</div>
-                                        <div className="text-[10px] text-slate-500 uppercase tracking-widest">Neural Sync</div>
-                                    </div>
-                                </div>
-                                <span className="material-icons-round text-white group-hover:-translate-y-1 transition-transform">arrow_upward</span>
+                                Return to Hub
                             </button>
                         </div>
-
-                        <div className="p-4 bg-amber-500/10 rounded-2xl border border-amber-500/20 flex gap-3 items-center text-left">
-                            <span className="material-icons-round text-amber-500 text-xl flex-shrink-0">psychiatry</span>
-                            <p className="text-[10px] sm:text-[11px] font-bold text-amber-200/80 leading-snug">
-                                Neural Sync will <span className="text-amber-400 uppercase tracking-widest">overwrite</span> current state.
-                            </p>
-                        </div>
-
-                        <button
-                            onClick={() => setShowDataModal(false)}
-                            className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
-                        >
-                            Return to Hub
-                        </button>
                     </div>
                 </div>
             )}

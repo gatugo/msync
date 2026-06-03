@@ -268,10 +268,10 @@ export default function Home() {
         />
       </div>
 
-      {/* Header - Show on Today, Stats, and Settings tabs */}
+      {/* Header - Show on Today, Stats, and Settings tabs (unless Goals are open) */}
       {activeTab !== 'coach' && (
         <header className={`fixed top-0 left-0 right-0 z-50 border-b border-slate-200 dark:border-white/5 bg-white/80 dark:bg-[#0f172a]/95 backdrop-blur-xl px-4 py-3 sm:px-6 sm:py-4 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-lg shadow-black/5 dark:shadow-[0_4px_30px_-10px_rgba(0,0,0,0.4)] ${
-          isNavbarHidden ? '-translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
+          isNavbarHidden || showGoals ? '-translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
         }`}>
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 dark:via-white/10 to-transparent"></div>
           <div className="max-w-[1400px] mx-auto flex items-center justify-between relative z-10">
@@ -387,7 +387,7 @@ export default function Home() {
               }}
               className="h-full overflow-y-auto px-4 sm:px-6 custom-scrollbar scroll-smooth"
             >
-              <div className="max-w-3xl mx-auto w-full pb-32 sm:pb-40 pt-6">
+              <div className="max-w-3xl mx-auto w-full pb-20 sm:pb-24 pt-2">
                 <ProgressChart history={history} />
               </div>
             </div>
@@ -409,8 +409,6 @@ export default function Home() {
 
           {activeTab === 'settings' && (
             <SettingsTab
-              showGoals={showGoals}
-              setShowGoals={setShowGoals}
               handleImport={handleImport}
               handleExport={handleExport}
               onScrollDirectionChange={setIsNavbarHidden}
@@ -429,9 +427,9 @@ export default function Home() {
       {activeTab !== 'coach' && (
         <button
           onClick={() => setIsAddTaskOpen(true)}
-          className={`fixed right-4 sm:right-8 z-40 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/40 hover:brightness-110 active:scale-95 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] transform ${
+          className={`fixed right-6 sm:right-10 z-40 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/40 hover:brightness-110 active:scale-95 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] transform ${
             isNavbarHidden 
-              ? 'translate-y-28 opacity-0 scale-90 pointer-events-none md:translate-y-0 md:opacity-100 md:scale-100 md:pointer-events-auto' 
+              ? 'translate-y-28 opacity-0 scale-90 pointer-events-none' 
               : 'translate-y-0 bottom-[76px] sm:bottom-[88px] opacity-100 scale-100'
           }`}
           title="Create New Task"

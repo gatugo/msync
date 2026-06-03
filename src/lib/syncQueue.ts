@@ -34,7 +34,11 @@ class SyncQueue {
     }
 
     private saveQueue() {
-        localStorage.setItem(this.storageKey, JSON.stringify(this.queue));
+        try {
+            localStorage.setItem(this.storageKey, JSON.stringify(this.queue));
+        } catch (e) {
+            console.error('Failed to save sync queue to localStorage, quota might be exceeded', e);
+        }
     }
 
     async enqueue(item: Omit<QueueItem, 'id' | 'timestamp'>) {
@@ -64,6 +68,8 @@ class SyncQueue {
                 this.saveQueue();
             } else {
                 // If it failed due to network, stop processing and wait for next online event
+                // Also schedule a retry in case we're still online but the server had a temporary hiccup
+                setTimeout(() => this.processQueue(), 10000);
                 break;
             }
         }

@@ -110,14 +110,14 @@ User Profile:${prefsStr}${memoryStr}`;
             const historyStr = conversationHistory?.length ? '\n\nPrevious conversation:\n' + conversationHistory.map((msg: { role: string; content: string }) => `${msg.role === 'user' ? 'User' : 'Coach'}: ${msg.content}`).join('\n') : '';
             const todayTasksList = tasks ? tasks.filter((t: Task) => t.scheduledDate === currentDateKey) : [];
             const tasksStr = todayTasksList.length > 0 ? `Today's Tasks (${currentDateKey}): ${todayTasksList.map((t: Task) => `${t.title} (${t.type}${t.scheduledTime ? ` at ${t.scheduledTime}` : ''})`).join(', ')}` : "No tasks scheduled for today.";
-            const historySummary = (history || []).slice(-7).map((h: DailySnapshot) => `- ${h.date}: Score ${h.score}, Adult ${h.adultCompleted}, Child ${h.childCompleted}, Rest ${h.restCompleted || 0}`).join('\n');
-            return `${commonContext}\n${tasksStr}\n${historySummary ? `\nPast 7 Days History:\n${historySummary}\n` : ''}${goals ? `Active Goals: ${goals.map((g: Goal) => `${g.title} (due ${g.targetDate})`).join(', ')}` : ''}${historyStr}
+            const historySummary = (history || []).slice(-14).map((h: DailySnapshot) => `- ${h.date}: Score ${h.score}, Adult ${h.adultCompleted}, Child ${h.childCompleted}, Rest ${h.restCompleted || 0}`).join('\n');
+            return `${commonContext}\n${tasksStr}\n${historySummary ? `\nPast 14 Days History:\n${historySummary}\n` : ''}${goals ? `Active Goals: ${goals.map((g: Goal) => `${g.title} (due ${g.targetDate})`).join(', ')}` : ''}${historyStr}
 
 <user_input>
 ${question}
 </user_input>
 Answer helpfully as the "Ego" coach using specific MindSync insights.
-Keep your response CONCISE, AUTHORITATIVE, and ACTIONABLE. Do not write long paragraphs or dense blocks of text. Use frequent line breaks and double newlines (\n\n) to keep each paragraph extremely short (maximum 1-2 sentences per paragraph). Structure your response with clear headings or bullet points for readability.
+Keep your response CONCISE, AUTHORITATIVE, and ACTIONABLE. Do not write long paragraphs or dense blocks of text. Use frequent line breaks and double newlines (\n\n) to keep each paragraph extremely short (maximum 1-2 sentences per paragraph). Structure your response with clear headings or bullet points for readability. IMPORTANT: When mentioning times in your conversation text, ALWAYS use 12-hour AM/PM format (e.g., "2:15 PM").
 
 CRITICAL: Only output '[ACTION: CREATE_TASK ...]' blocks if the user explicitly asks to schedule, plan, fill in their schedule, or add/fix a task (including partial requests like "apply step 1" or "just do the second one"). 
 If the user is just asking for general advice or diagnostics, do NOT output any action blocks. Instead, at the very end of your response, add a short, actionable prompt like: *"Reply 'apply these fixes' or 'apply step 1' to add these to your timeline."*
@@ -179,11 +179,11 @@ Instructions:
    - Use 'ADULT' for work, responsibilities, effort, and chores.
    - Use 'REST' for sleep, breaks, and recovery.
 2. **Date**: If mentioned ("tomorrow"), return specific date. Else "${currentDateKey}".
-3. **Time**: If mentioned, use it. Else suggest a slot based on balance: ADULT in morning/afternoon, CHILD/REST in evening.
+3. **Time**: If explicitly mentioned, use it. If not mentioned, return an empty string "". Do NOT suggest or guess a time.
 4. **Duration**: Explicit or inferred (Gym=60, Call=30, Fun=varies). Default 30.
 
 Respond with ONLY this JSON format:
-{"suggestedType": "ADULT" | "CHILD" | "REST", "suggestedDate": "YYYY-MM-DD", "suggestedTime": "HH:MM", "duration": 30}`;
+{"suggestedType": "ADULT" | "CHILD" | "REST", "suggestedDate": "YYYY-MM-DD", "suggestedTime": "HH:MM" | "", "duration": 30}`;
         }
         default: return 'Give me general advice about maintaining mental balance.';
     }

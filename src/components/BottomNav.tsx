@@ -20,7 +20,7 @@ export default function BottomNav({ currentTab, onTabChange, isHidden = false }:
         <nav 
             className={`fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 bg-white/75 dark:bg-slate-950/80 backdrop-blur-xl border border-slate-200/60 dark:border-white/10 p-1 rounded-full z-50 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] shadow-lg shadow-slate-200/25 dark:shadow-black/50 transform ${
                 isHidden 
-                    ? 'translate-y-28 -translate-x-1/2 opacity-0 scale-90 pointer-events-none md:translate-y-0 md:-translate-x-1/2 md:opacity-100 md:scale-100 md:pointer-events-auto' 
+                    ? 'translate-y-28 -translate-x-1/2 opacity-0 scale-90 pointer-events-none' 
                     : 'translate-y-0 -translate-x-1/2 opacity-100 scale-100'
             }`}
         >

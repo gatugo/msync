@@ -693,126 +693,130 @@ ${insight}
                             </div>
                         )}
 
-                        {messages.map((msg) => (
-                            <div key={msg.id} className="space-y-4 animate-in slide-in-from-bottom-3 duration-300">
-                                <div className={`flex items-start gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-lg border border-white/10 transition-transform hover:scale-105 duration-300 ${msg.role === 'user' ? 'bg-gradient-to-tr from-indigo-700 via-indigo-600 to-indigo-500' : 'bg-gradient-to-br from-purple-600 to-indigo-600'}`}>
-                                        {msg.role === 'user' ? <FuturisticUserIcon className="w-[34px] h-[34px] text-white" /> : <FlowerOfLifeIcon className="w-[34px] h-[34px] text-white" />}
-                                    </div>
-                                    <div className={`relative max-w-[85%] border transition-all duration-300 group ${
-                                        msg.role === 'user' 
-                                            ? 'bg-gradient-to-tr from-indigo-500 via-indigo-600 to-purple-600 border-indigo-500/30 text-white rounded-[24px] rounded-br-[4px] shadow-[0_8px_25px_-5px_rgba(99,102,241,0.45)] user-message-glow font-semibold px-4 py-2.5' 
-                                            : 'bg-white/[0.04] dark:bg-white/[0.02] backdrop-blur-2xl border-white/10 text-slate-100 rounded-[28px] rounded-tl-[4px] shadow-[0_15px_50px_-15px_rgba(0,0,0,0.6)] assistant-message-glow hover:border-white/20 pl-5 pr-4 py-2.5'
-                                    }`}>
-                                        {/* Glowing Pulse Accent Strip for Assistant Bubble */}
-                                        {msg.role === 'assistant' && (
-                                            <div className="absolute left-0 top-3 bottom-3 w-[3px] bg-gradient-to-b from-indigo-500 via-purple-500 to-pink-500 rounded-r blur-[0.5px] opacity-70 animate-pulse" />
-                                        )}
+                        {messages.map((msg, index) => {
+                            const isLastMessage = index === messages.length - 1;
+                            const isCurrentlyStreaming = isLoading && isLastMessage && msg.role === 'assistant';
+                            return (
+                                <div key={msg.id} className="space-y-4 animate-in slide-in-from-bottom-3 duration-300">
+                                    <div className={`flex items-start gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                                        <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-lg border border-white/10 transition-transform hover:scale-105 duration-300 ${msg.role === 'user' ? 'bg-gradient-to-tr from-indigo-700 via-indigo-600 to-indigo-500' : 'bg-gradient-to-br from-purple-600 to-indigo-600'}`}>
+                                            {msg.role === 'user' ? <FuturisticUserIcon className="w-[34px] h-[34px] text-white" /> : <FlowerOfLifeIcon className="w-[34px] h-[34px] text-white" />}
+                                        </div>
+                                        <div className={`relative max-w-[85%] border transition-all duration-300 group ${
+                                            msg.role === 'user' 
+                                                ? 'bg-gradient-to-tr from-indigo-500 via-indigo-600 to-purple-600 border-indigo-500/30 text-white rounded-[24px] rounded-br-[4px] shadow-[0_8px_25px_-5px_rgba(99,102,241,0.45)] user-message-glow font-semibold px-4 py-2.5' 
+                                                : 'bg-white/[0.04] dark:bg-white/[0.02] backdrop-blur-2xl border-white/10 text-slate-100 rounded-[28px] rounded-tl-[4px] shadow-[0_15px_50px_-15px_rgba(0,0,0,0.6)] assistant-message-glow hover:border-white/20 pl-5 pr-4 py-2.5'
+                                        }`}>
+                                            {/* Glowing Pulse Accent Strip for Assistant Bubble */}
+                                            {msg.role === 'assistant' && (
+                                                <div className="absolute left-0 top-3 bottom-3 w-[3px] bg-gradient-to-b from-indigo-500 via-purple-500 to-pink-500 rounded-r blur-[0.5px] opacity-70 animate-pulse" />
+                                            )}
 
-                                        {msg.content && msg.content.trim() && (
-                                            <div className="text-[15px] leading-relaxed tracking-wide font-medium prose prose-invert prose-p:my-1.5 prose-li:my-0.5 max-w-none text-slate-100/95">{renderMarkdown(msg.content)}</div>
-                                        )}
-                                        
-                                        {/* Collapsible Thoughts (o1/Claude 3.7 style reasoning panel) */}
-                                        {msg.thought && (
-                                            <div className="mt-2 flex flex-col items-center justify-center">
-                                                <details className="group w-full max-w-md transition-all duration-500 ease-in-out">
-                                                    <summary className="mx-auto w-fit flex items-center gap-2 px-3 py-1 rounded-full border border-indigo-500/25 bg-indigo-500/10 hover:bg-indigo-500/20 hover:border-indigo-500/40 text-indigo-300 font-bold select-none text-[10px] uppercase tracking-wider cursor-pointer transition-all duration-300 shadow-[0_2px_10px_rgba(99,102,241,0.1)] hover:scale-105 active:scale-95 list-none [&::-webkit-details-marker]:hidden">
-                                                        <div className="relative flex items-center justify-center">
-                                                            <div className="absolute inset-0 bg-indigo-500/30 rounded-full blur-[3px] animate-pulse" />
-                                                            <Brain className="w-3.5 h-3.5 text-indigo-400 relative z-10" />
-                                                        </div>
-                                                        <span className="leading-none mt-0.5">Cognitive Process</span>
-                                                        <span className="text-[8px] text-slate-400 group-open:hidden uppercase font-black px-1.5 py-0.5 rounded-full bg-white/5 border border-white/10 ml-1">Expand</span>
-                                                        <span className="text-[8px] text-indigo-300 hidden group-open:inline uppercase font-black px-1.5 py-0.5 rounded-full bg-indigo-500/25 border border-indigo-500/30 ml-1">Active</span>
-                                                        <ChevronDown className="w-3 h-3 text-indigo-300/70 group-open:rotate-180 transition-transform duration-300 ml-0.5" />
-                                                    </summary>
-                                                    <div className="px-3 pb-3 pt-2 text-slate-300/85 leading-relaxed max-h-32 overflow-y-auto custom-scrollbar font-mono text-[10px] whitespace-pre-wrap bg-slate-950/45 rounded-xl border border-white/5 backdrop-blur-md mt-2 italic animate-in slide-in-from-top-2 duration-300 shadow-inner">
-                                                        <div className="flex gap-2 opacity-50 mb-1.5 justify-center">
-                                                            <div className="w-1 h-1 rounded-full bg-indigo-500 animate-ping mt-1" />
-                                                            <span className="text-[9px] uppercase tracking-tighter">Trace Initiated...</span>
-                                                        </div>
-                                                        {msg.thought}
-                                                    </div>
-                                                </details>
-                                            </div>
-                                        )}
-
-                                        <button onClick={() => deleteMessage(msg.id)} className={`absolute -top-3 p-1.5 rounded-full bg-slate-950 border border-white/10 text-white/40 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100 backdrop-blur-md shadow-lg ${msg.role === 'user' ? '-left-3' : '-right-3'}`} title="Delete"><X className="w-3 h-3" /></button>
-                                    </div>
-                                </div>
-
-                                {msg.actions && (
-                                    <div className={`${msg.role === 'user' ? 'mr-13' : 'ml-13'} space-y-4`}>
-                                        {msg.actions.map((action, idx) => {
-                                            const isExecuted = msg.executedActions?.includes(idx);
-                                            const design = action.taskType === 'CHILD' 
-                                                ? { neon: 'suggestion-neon-pink', bg: 'bg-pink-500/[0.03]', border: 'border-pink-500/25 hover:border-pink-500/40', text: 'text-pink-400', emoji: '🩷' } 
-                                                : action.taskType === 'REST'
-                                                ? { neon: 'suggestion-neon-green', bg: 'bg-emerald-500/[0.03]', border: 'border-emerald-500/25 hover:border-emerald-500/40', text: 'text-emerald-400', emoji: '🟢' }
-                                                : { neon: 'suggestion-neon-blue', bg: 'bg-indigo-500/[0.03]', border: 'border-indigo-500/25 hover:border-indigo-500/40', text: 'text-indigo-400', emoji: '🔵' };
-                                            return (
-                                                <div key={idx} className={`${design.bg} ${design.border} ${design.neon} border rounded-[24px] p-5 shadow-xl overflow-hidden backdrop-blur-md transition-all duration-300`}>
-                                                    <div className="flex items-start justify-between gap-4 mb-4">
-                                                        <div className="flex-1">
-                                                            <div className="font-semibold text-slate-200">
-                                                                {action.type === 'CREATE_TASK' ? action.title : 'Mental Note'}
+                                            {msg.content && msg.content.trim() && (
+                                                <div className="text-[15px] leading-relaxed tracking-wide font-medium prose prose-invert prose-p:my-1.5 prose-li:my-0.5 max-w-none text-slate-100/95">{renderMarkdown(msg.content)}</div>
+                                            )}
+                                            
+                                            {/* Collapsible Thoughts (o1/Claude 3.7 style reasoning panel) */}
+                                            {msg.thought && isCurrentlyStreaming && (
+                                                <div className="mt-2 flex flex-col items-start justify-start">
+                                                    <details className="group w-full max-w-md transition-all duration-500 ease-in-out">
+                                                        <summary className="w-fit flex items-center gap-2 px-3 py-1 rounded-full border border-indigo-500/25 bg-indigo-500/10 hover:bg-indigo-500/20 hover:border-indigo-500/40 text-indigo-300 font-bold select-none text-[10px] uppercase tracking-wider cursor-pointer transition-all duration-300 shadow-[0_2px_10px_rgba(99,102,241,0.1)] hover:scale-105 active:scale-95 list-none [&::-webkit-details-marker]:hidden">
+                                                            <div className="relative flex items-center justify-center">
+                                                                <div className="absolute inset-0 bg-indigo-500/30 rounded-full blur-[3px] animate-pulse" />
+                                                                <Brain className="w-3.5 h-3.5 text-indigo-400 relative z-10" />
                                                             </div>
-                                                            <div className="text-slate-400 mt-0.5 flex flex-wrap gap-2 items-center">
-                                                                {action.type === 'CREATE_TASK' && (
-                                                                    <>
-                                                                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                                                                            action.taskType === 'ADULT' ? 'bg-orange-500/20 text-orange-400' :
-                                                                            action.taskType === 'CHILD' ? 'bg-sky-500/20 text-sky-400' :
-                                                                            'bg-emerald-500/20 text-emerald-400'
-                                                                        }`}>
-                                                                            {action.taskType}
-                                                                        </span>
-                                                                        <span>{action.duration}m</span>
-                                                                        {action.scheduledTime && <span>• {format12h(action.scheduledTime)}</span>}
-                                                                    </>
-                                                                )}
-                                                                {action.type === 'REMEMBER' && (
-                                                                    <span className="text-xs italic text-indigo-300">
-                                                                        "{action.fact}"
-                                                                    </span>
-                                                                )}
+                                                            <span className="leading-none mt-0.5">Cognitive Process</span>
+                                                            <span className="text-[8px] text-slate-400 group-open:hidden uppercase font-black px-1.5 py-0.5 rounded-full bg-white/5 border border-white/10 ml-1">Expand</span>
+                                                            <span className="text-[8px] text-indigo-300 hidden group-open:inline uppercase font-black px-1.5 py-0.5 rounded-full bg-indigo-500/25 border border-indigo-500/30 ml-1">Active</span>
+                                                            <ChevronDown className="w-3 h-3 text-indigo-300/70 group-open:rotate-180 transition-transform duration-300 ml-0.5" />
+                                                        </summary>
+                                                        <div className="px-3 pb-3 pt-2 text-slate-300/85 leading-relaxed max-h-32 overflow-y-auto custom-scrollbar font-mono text-[10px] whitespace-pre-wrap bg-slate-950/45 rounded-xl border border-white/5 backdrop-blur-md mt-2 italic animate-in slide-in-from-top-2 duration-300 shadow-inner">
+                                                            <div className="flex gap-2 opacity-50 mb-1.5 justify-center">
+                                                                <div className="w-1 h-1 rounded-full bg-indigo-500 animate-ping mt-1" />
+                                                                <span className="text-[9px] uppercase tracking-tighter">Trace Initiated...</span>
                                                             </div>
+                                                            {msg.thought}
                                                         </div>
-                                                    </div>
-
-                                                    <div className="flex gap-3">
-                                                        {!isExecuted ? (
-                                                            <button
-                                                                onClick={() => {
-                                                                    handleExecuteAction(action, msg.id);
-                                                                    setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, executedActions: [...(m.executedActions || []), idx] } : m));
-                                                                }}
-                                                                className="flex-1 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:brightness-110 text-white py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 border border-white/10 active:scale-95"
-                                                            >
-                                                                {action.type === 'REMEMBER' ? <Brain className="w-4 h-4" /> : <PlusCircle className="w-4 h-4" />}
-                                                                {action.type === 'REMEMBER' ? 'Save Memory' : 'Add to Timeline'}
-                                                            </button>
-                                                        ) : (
-                                                            <div className="flex-1 bg-emerald-500/20 text-emerald-400 py-3 rounded-2xl text-xs font-extrabold border border-emerald-500/25 cursor-default text-center tracking-widest uppercase">
-                                                                {action.type === 'REMEMBER' ? 'Memory Saved' : 'Added to Timeline'}
-                                                            </div>
-                                                        )}
-                                                        <button
-                                                            onClick={() => handleSuggestAnother(action)}
-                                                            className="flex-1 bg-white/5 hover:bg-white/10 text-white/70 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 border border-white/10 active:scale-95"
-                                                        >
-                                                            <RotateCw className="w-3.5 h-3.5" />
-                                                            Suggest Another
-                                                        </button>
-                                                    </div>
+                                                    </details>
                                                 </div>
-                                            );
-                                        })}
+                                            )}
+
+                                            <button onClick={() => deleteMessage(msg.id)} className={`absolute -top-3 p-1.5 rounded-full bg-slate-950 border border-white/10 text-white/40 hover:text-red-400 transition-all opacity-0 group-hover:opacity-100 backdrop-blur-md shadow-lg ${msg.role === 'user' ? '-left-3' : '-right-3'}`} title="Delete"><X className="w-3 h-3" /></button>
+                                        </div>
                                     </div>
-                                )}
-                            </div>
-                        ))}
+
+                                    {msg.actions && (
+                                        <div className={`${msg.role === 'user' ? 'mr-13' : 'ml-13'} space-y-4`}>
+                                            {msg.actions.map((action, idx) => {
+                                                const isExecuted = msg.executedActions?.includes(idx);
+                                                const design = action.taskType === 'CHILD' 
+                                                    ? { neon: 'suggestion-neon-pink', bg: 'bg-pink-500/[0.03]', border: 'border-pink-500/25 hover:border-pink-500/40', text: 'text-pink-400', emoji: '🩷' } 
+                                                    : action.taskType === 'REST'
+                                                    ? { neon: 'suggestion-neon-green', bg: 'bg-emerald-500/[0.03]', border: 'border-emerald-500/25 hover:border-emerald-500/40', text: 'text-emerald-400', emoji: '🟢' }
+                                                    : { neon: 'suggestion-neon-blue', bg: 'bg-indigo-500/[0.03]', border: 'border-indigo-500/25 hover:border-indigo-500/40', text: 'text-indigo-400', emoji: '🔵' };
+                                                return (
+                                                    <div key={idx} className={`${design.bg} ${design.border} ${design.neon} border rounded-[24px] p-5 shadow-xl overflow-hidden backdrop-blur-md transition-all duration-300`}>
+                                                        <div className="flex items-start justify-between gap-4 mb-4">
+                                                            <div className="flex-1">
+                                                                <div className="font-semibold text-slate-200">
+                                                                    {action.type === 'CREATE_TASK' ? action.title : 'Mental Note'}
+                                                                </div>
+                                                                <div className="text-slate-400 mt-0.5 flex flex-wrap gap-2 items-center">
+                                                                    {action.type === 'CREATE_TASK' && (
+                                                                        <>
+                                                                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                                                                                action.taskType === 'ADULT' ? 'bg-orange-500/20 text-orange-400' :
+                                                                                action.taskType === 'CHILD' ? 'bg-sky-500/20 text-sky-400' :
+                                                                                'bg-emerald-500/20 text-emerald-400'
+                                                                            }`}>
+                                                                                {action.taskType}
+                                                                            </span>
+                                                                            <span>{action.duration}m</span>
+                                                                            {action.scheduledTime && <span>• {format12h(action.scheduledTime)}</span>}
+                                                                        </>
+                                                                    )}
+                                                                    {action.type === 'REMEMBER' && (
+                                                                        <span className="text-xs italic text-indigo-300">
+                                                                            "{action.fact}"
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex gap-3">
+                                                            {!isExecuted ? (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        handleExecuteAction(action, msg.id);
+                                                                        setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, executedActions: [...(m.executedActions || []), idx] } : m));
+                                                                    }}
+                                                                    className="flex-1 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:brightness-110 text-white py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 border border-white/10 active:scale-95"
+                                                                >
+                                                                    {action.type === 'REMEMBER' ? <Brain className="w-4 h-4" /> : <PlusCircle className="w-4 h-4" />}
+                                                                    {action.type === 'REMEMBER' ? 'Save Memory' : 'Add to Timeline'}
+                                                                </button>
+                                                            ) : (
+                                                                <div className="flex-1 bg-emerald-500/20 text-emerald-400 py-3 rounded-2xl text-xs font-extrabold border border-emerald-500/25 cursor-default text-center tracking-widest uppercase">
+                                                                    {action.type === 'REMEMBER' ? 'Memory Saved' : 'Added to Timeline'}
+                                                                </div>
+                                                            )}
+                                                            <button
+                                                                onClick={() => handleSuggestAnother(action)}
+                                                                className="flex-1 bg-white/5 hover:bg-white/10 text-white/70 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 border border-white/10 active:scale-95"
+                                                            >
+                                                                <RotateCw className="w-3.5 h-3.5" />
+                                                                Suggest Another
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
 
                         {isLoading && (
                             <div className="flex items-center gap-4 ml-12 animate-in fade-in duration-500">

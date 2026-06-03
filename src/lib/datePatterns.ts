@@ -79,17 +79,21 @@ export const parseNaturalDateTime = (input: string): ParsedDateTime => {
         // Just remove 'today', date is already now
         clean = removePattern(clean, /\btoday\b/i);
         dateDetected = true;
+    } else if (clean.match(/\bnext\s+week\b/i)) {
+        targetDate.setDate(targetDate.getDate() + 7);
+        clean = removePattern(clean, /\bnext\s+week\b/i);
+        dateDetected = true;
     } else {
-         const nextDayMatch = clean.match(/next\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday)/i);
-         if (nextDayMatch) {
+         const dayMatch = clean.match(/(?:this\s+|next\s+|on\s+)?\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i);
+         if (dayMatch) {
             const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-            const targetDayName = nextDayMatch[1].toLowerCase();
+            const targetDayName = dayMatch[1].toLowerCase();
             const targetDayIndex = dayNames.indexOf(targetDayName);
             const currentDayIndex = targetDate.getDay();
             let daysToAdd = targetDayIndex - currentDayIndex;
             if (daysToAdd <= 0) daysToAdd += 7;
             targetDate.setDate(targetDate.getDate() + daysToAdd);
-            clean = removePattern(clean, nextDayMatch[0]);
+            clean = removePattern(clean, dayMatch[0]);
             dateDetected = true;
          }
     }
@@ -113,8 +117,9 @@ export const parseNaturalDateTime = (input: string): ParsedDateTime => {
     // We'll iterate multiple reliable patterns instead of one giant one to avoid complexity
     const patterns = [
         /(?:at\s+)?(\d{1,2}):(\d{2})\s*(am|pm)?/i,      // 1:30pm (Standard)
-        /(\d{1,2})(\d{2})\s*(am|pm|a|p)/i,              // 130p, 1030am (Compact Time)
-        /(\d{1,2})\s*(am|pm|a|p)/i                      // 5p, 11a (Hour Only)
+        /(?:at\s+)?(\d{1,2})(\d{2})\s*(am|pm|a|p)/i,              // 130p, 1030am (Compact Time)
+        /(?:at\s+)?(\d{1,2})\s*(am|pm|a|p)\b/i,                      // 5p, 11a (Hour Only)
+        /(?:at\s+)(\d{1,2})\b(?:\s*o'?clock)?/i         // at 5, at 14
     ];
 
     let bestTimeMatchString = '';
@@ -132,7 +137,7 @@ export const parseNaturalDateTime = (input: string): ParsedDateTime => {
                 // Case 1: Standard 1:30
                 h = parseInt(match[1]);
                 m = parseInt(match[2]);
-                ampm = match[3]?.toLowerCase();
+                ampm = match[3]?.toLowerCase() || '';
             } else if (match[1] && match[2] && match[3]) {
                  // Case 2: Compact 130p
                  h = parseInt(match[1]);
@@ -143,6 +148,11 @@ export const parseNaturalDateTime = (input: string): ParsedDateTime => {
                 h = parseInt(match[1]);
                 m = 0;
                 ampm = match[2].toLowerCase();
+            } else if (match[1]) {
+                // Case 4: "at 5"
+                h = parseInt(match[1]);
+                m = 0;
+                ampm = '';
             }
 
             // Normalize AM/PM shorthand

@@ -59,6 +59,7 @@ export interface StoreState {
     fetchInitialData: () => Promise<void>;
     checkAuth: () => Promise<void>;
     resetStore: () => void;
+    clearAllData: () => Promise<void>;
 }
 
 // ============ HELPER FUNCTIONS ============
@@ -231,6 +232,18 @@ export const useStore = create<StoreState>()(
         });
     },
 
+    clearAllData: async () => {
+        set({
+            tasks: [],
+            history: [],
+            goals: [],
+            aiMemory: []
+        });
+        if (get().isAuthenticated) {
+            await api.deleteAllData();
+        }
+    },
+
     // Task actions
     addTask: (title: string, type: TaskType, date?: string, time?: string, duration?: number) => {
         const initialStatus: TaskStatus = 'TODO';
@@ -250,7 +263,7 @@ export const useStore = create<StoreState>()(
         get().saveDailySnapshot();
 
         // Sync
-        api.createTask(newTask);
+        api.createTask(newTask).catch(console.error);
     },
 
     moveTask: (taskId: string, newStatus: TaskStatus) => {
@@ -271,7 +284,7 @@ export const useStore = create<StoreState>()(
         get().saveDailySnapshot();
 
         // Sync
-        api.updateTask(taskId, { status: newStatus, completedAt });
+        api.updateTask(taskId, { status: newStatus, completedAt }).catch(console.error);
     },
 
     deleteTask: (taskId: string) => {
@@ -279,7 +292,7 @@ export const useStore = create<StoreState>()(
             tasks: state.tasks.filter((task) => task.id !== taskId),
         }));
         get().saveDailySnapshot();
-        api.deleteTask(taskId);
+        api.deleteTask(taskId).catch(console.error);
     },
 
     updateTask: (taskId: string, updates: Partial<Pick<Task, 'title' | 'scheduledTime' | 'duration'>>) => {
@@ -289,13 +302,13 @@ export const useStore = create<StoreState>()(
             )),
         }));
         get().saveDailySnapshot();
-        api.updateTask(taskId, updates);
+        api.updateTask(taskId, updates).catch(console.error);
     },
 
     clearCompletedTasks: () => {
         const state = get();
         const doneTasks = state.tasks.filter(t => t.status === 'DONE');
-        doneTasks.forEach(task => api.deleteTask(task.id));
+        doneTasks.forEach(task => api.deleteTask(task.id).catch(console.error));
 
         set((state) => ({
             tasks: sortTasks(state.tasks.filter((task) => task.status !== 'DONE')),
@@ -307,7 +320,7 @@ export const useStore = create<StoreState>()(
     saveDailySnapshot: () => {
         if (saveSnapshotTimeout) clearTimeout(saveSnapshotTimeout);
         
-        saveSnapshotTimeout = setTimeout(() => {
+        const flushSnapshot = () => {
             const state = get();
             const today = getTodayString();
             const { score } = state.getDailyScore();
@@ -335,7 +348,23 @@ export const useStore = create<StoreState>()(
                 set({ history: sortHistory([...state.history, snapshot]) });
             }
 
-            api.saveSnapshot(snapshot);
+            api.saveSnapshot(snapshot).catch(console.error);
+        };
+
+        // Attach a beforeunload listener once to ensure flush happens if the user leaves before timeout
+        if (typeof window !== 'undefined' && !(window as any)._hasBeforeUnloadListener) {
+            window.addEventListener('beforeunload', () => {
+                if (saveSnapshotTimeout) {
+                    clearTimeout(saveSnapshotTimeout);
+                    flushSnapshot();
+                }
+            });
+            (window as any)._hasBeforeUnloadListener = true;
+        }
+
+        saveSnapshotTimeout = setTimeout(() => {
+            flushSnapshot();
+            saveSnapshotTimeout = null;
         }, 1500); // Debounce to prevent over-saving during rapid changes
     },
 
@@ -350,7 +379,7 @@ export const useStore = create<StoreState>()(
             createdAt: new Date().toISOString(),
         };
         set((state) => ({ goals: sortGoals([...state.goals, newGoal]) }));
-        api.createGoal(newGoal);
+        api.createGoal(newGoal).catch(console.error);
     },
 
     editGoal: (goalId: string, title: string, targetDate: string, startTime?: string) => {
@@ -361,7 +390,7 @@ export const useStore = create<StoreState>()(
                     : goal
             )),
         }));
-        api.updateGoal(goalId, { title, targetDate, startTime });
+        api.updateGoal(goalId, { title, targetDate, startTime }).catch(console.error);
     },
 
     toggleGoal: (goalId: string) => {
@@ -375,14 +404,14 @@ export const useStore = create<StoreState>()(
                 return goal;
             }),
         }));
-        api.updateGoal(goalId, { completed: newCompletedState });
+        api.updateGoal(goalId, { completed: newCompletedState }).catch(console.error);
     },
 
     deleteGoal: (goalId: string) => {
         set((state) => ({
             goals: state.goals.filter((goal) => goal.id !== goalId),
         }));
-        api.deleteGoal(goalId);
+        api.deleteGoal(goalId).catch(console.error);
     },
 
     // AI Memory actions
@@ -393,7 +422,7 @@ export const useStore = create<StoreState>()(
             createdAt: new Date().toISOString(),
         };
         set((state) => ({ aiMemory: [...state.aiMemory, newMemory] }));
-        api.saveMemory(fact);
+        api.saveMemory(fact).catch(console.error);
     },
 
     updatePreferences: (newPrefs) => {
@@ -411,7 +440,7 @@ export const useStore = create<StoreState>()(
             sleep_start_time: newPrefs.sleepStartTime,
             // @ts-ignore - map to snake_case for DB
             sleep_end_time: newPrefs.sleepEndTime,
-        });
+        }).catch(console.error);
     },
 
     // Calculated values (Unchanged)
@@ -467,7 +496,7 @@ export const useStore = create<StoreState>()(
     },
 
     getTasksByStatus: (status: TaskStatus) => {
-        return sortTasks(get().tasks.filter((task) => task.status === status));
+        return get().tasks.filter((task) => task.status === status);
     },
 
     exportData: () => {

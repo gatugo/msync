@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Redis } from '@upstash/redis';
 import Groq from 'groq-sdk';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { COACH_SYSTEM_PROMPT, getSystemPrompt } from '@/lib/aiPrompts';
@@ -6,11 +7,37 @@ import { z } from 'zod';
 import { buildPrompt } from '@/lib/coachLogic';
 import { supabase } from '@/lib/supabase';
 
-// ============ SECURITY: Rate Limiting ============
-const REQUESTS_PER_MINUTE = 15; // Increased for StepFun free tier
+// ============ SECURITY: Distributed Rate Limiting ============
+const REQUESTS_PER_MINUTE = 15;
+
+// Initialize Redis only if env vars are present, otherwise fallback to in-memory (best-effort)
+const redis = process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+    ? new Redis({
+        url: process.env.UPSTASH_REDIS_REST_URL,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN,
+    })
+    : null;
+
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 
-function isRateLimited(userId: string): boolean {
+async function isRateLimited(userId: string): Promise<boolean> {
+    if (redis) {
+        try {
+            const key = `rate_limit:${userId}`;
+            const currentRequests = await redis.incr(key);
+            
+            if (currentRequests === 1) {
+                await redis.expire(key, 60);
+            }
+            
+            return currentRequests > REQUESTS_PER_MINUTE;
+        } catch (error) {
+            console.error('Redis rate limiting error, falling back to memory:', error);
+            // Fallback to in-memory if Redis fails
+        }
+    }
+
+    // In-memory fallback
     const now = Date.now();
     const userLimit = rateLimitMap.get(userId) || { count: 0, resetTime: now + 60 * 1000 };
 
@@ -29,15 +56,15 @@ function isRateLimited(userId: string): boolean {
 // ============ SECURITY: Input Validation ============
 const CoachRequestSchema = z.object({
     mode: z.string().max(30),
-    tasks: z.array(z.any()).optional(),
+    tasks: z.array(z.any()).max(50).optional(),
     score: z.number().optional(),
     balance: z.string().max(30).optional(),
     question: z.string().max(1000).optional(), // Protect against prompt injection / massive tokens
     taskTitle: z.string().max(150).optional(),
-    history: z.array(z.any()).optional(),
-    goals: z.array(z.any()).optional(),
+    history: z.array(z.any()).max(50).optional(),
+    goals: z.array(z.any()).max(50).optional(),
     preferences: z.any().optional(),
-    conversationHistory: z.array(z.any()).optional(),
+    conversationHistory: z.array(z.any()).max(50).optional(),
     localDate: z.string().max(20).optional(),
     localTime: z.string().max(20).optional(),
     summaryInterval: z.string().max(30).optional()
@@ -66,7 +93,7 @@ async function callStepFunStream(prompt: string): Promise<ReadableStream> {
             { role: 'user', content: prompt }
         ],
         stream: true,
-        temperature: isStepPlanUrl ? 0 : 0.7, // Planning typically needs lower temperature
+        temperature: isStepPlanUrl ? 0 : 0.5, // Lowered temperature for better logical precision
         max_tokens: 4096,
     };
 
@@ -110,12 +137,12 @@ async function callStepFunJSON(prompt: string): Promise<string> {
             'Authorization': `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-            model: process.env.STEPFUN_MODEL || 'step-3.5-flash',
+            model: process.env.STEPFUN_MODEL || 'step-3.7-flash',
             messages: [
                 { role: 'system', content: `${getSystemPrompt('stepfun')}\n\nRespond with valid JSON only.` },
                 { role: 'user', content: prompt }
             ],
-            temperature: 0.7,
+            temperature: 0.5,
             max_tokens: 4096,
             reasoning_effort: process.env.STEPFUN_REASONING_EFFORT || 'low',
         }),
@@ -230,7 +257,8 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Rate Limit by Authenticated User ID
-    if (isRateLimited(user.id)) {
+    const isLimited = await isRateLimited(user.id);
+    if (isLimited) {
         return NextResponse.json({ error: 'Rate limit exceeded.' }, { status: 429 });
     }
 

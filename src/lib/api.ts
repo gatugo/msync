@@ -316,5 +316,19 @@ export const api = {
         } catch (e) {
             console.error('Error saving memory:', e);
         }
+    },
+
+    deleteAllData: async () => {
+        try {
+            const userId = await requireAuth();
+            await Promise.all([
+                supabase.from('tasks').delete().eq('user_id', userId),
+                supabase.from('goals').delete().eq('user_id', userId),
+                supabase.from('daily_history').delete().eq('user_id', userId),
+                supabase.from('ai_memory').delete().eq('user_id', userId)
+            ]);
+        } catch (e) {
+            console.error('Error deleting all data:', e);
+        }
     }
 };

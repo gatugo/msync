@@ -85,9 +85,9 @@ export default function ProgressChart({ history }: ProgressChartProps) {
     }
 
     return (
-        <div className="bg-slate-900/40 backdrop-blur-2xl rounded-2xl p-4 sm:p-6 relative border border-white/5 shadow-[0_0_40px_-15px_rgba(99,102,241,0.2)] animate-in fade-in zoom-in-95 duration-500">
+        <div className="bg-slate-900/40 backdrop-blur-2xl rounded-2xl p-4 sm:p-5 relative border border-white/5 shadow-[0_0_40px_-15px_rgba(99,102,241,0.2)] animate-in fade-in zoom-in-95 duration-500">
             {/* Header */}
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/20">
                         <span className="material-icons-round text-white text-lg">insights</span>
@@ -121,7 +121,7 @@ export default function ProgressChart({ history }: ProgressChartProps) {
 
             {/* Chart Area */}
             {chartData.every((d) => d.adult === 0 && d.child === 0 && d.rest === 0) ? (
-                <div className="h-64 md:h-[350px] flex flex-col items-center justify-center text-center p-6 relative animate-in fade-in duration-700">
+                <div className="h-48 md:h-[240px] flex flex-col items-center justify-center text-center p-6 relative animate-in fade-in duration-700">
                     {/* Glowing background blur */}
                     <div className="absolute inset-0 bg-amber-500/5 blur-3xl rounded-full scale-75 pointer-events-none" />
                     
@@ -136,7 +136,7 @@ export default function ProgressChart({ history }: ProgressChartProps) {
                     </p>
                 </div>
             ) : (
-                <div className="h-[300px] md:h-[420px] w-full">
+                <div className="h-[210px] sm:h-[250px] md:h-[280px] lg:h-[300px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <ComposedChart data={chartData} margin={{ top: 10, right: -10, left: -20, bottom: 0 }}>
                             <defs>
@@ -203,7 +203,7 @@ export default function ProgressChart({ history }: ProgressChartProps) {
                                 verticalAlign="top"
                                 align="right"
                                 iconType="circle"
-                                wrapperStyle={{ paddingBottom: '20px', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}
+                                wrapperStyle={{ paddingBottom: '10px', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}
                             />
 
                             <Bar

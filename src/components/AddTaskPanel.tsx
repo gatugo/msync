@@ -79,73 +79,8 @@ export default function AddTaskPanel({ isOpen, onClose, onAdd }: AddTaskPanelPro
 
         const today = getLocalDateString();
 
-        if (preferences.aiEnabled) {
-            setIsAILoading(true);
-            setAIError(null);
-            try {
-                const now = new Date();
-                const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-                const localTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-
-                const { data: { session } } = await supabase.auth.getSession();
-                const token = session?.access_token;
-
-                const response = await fetch('/api/coach', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-                    },
-                    body: JSON.stringify({
-                        mode: 'schedule_assist',
-                        taskTitle: title.trim(),
-                        localDate,
-                        localTime,
-                        tasks: tasks.map(t => ({
-                            scheduledDate: t.scheduledDate,
-                            scheduledTime: t.scheduledTime,
-                            duration: t.duration,
-                            status: t.status
-                        })),
-                    }),
-                });
-
-                const data = await response.json();
-                if (!data.success) throw new Error(data.error || 'AI request failed');
-
-                let jsonStr = data.response;
-                const firstBrace = jsonStr.indexOf('{');
-                const lastBrace = jsonStr.lastIndexOf('}');
-                if (firstBrace !== -1 && lastBrace !== -1) {
-                    jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
-                }
-                const suggestion = JSON.parse(jsonStr);
-
-                const aiType = (suggestion.suggestedType && ['ADULT', 'CHILD', 'REST'].includes(suggestion.suggestedType))
-                    ? suggestion.suggestedType as TaskType
-                    : type;
-                
-                // If user didn't change date from today, and time is empty, prefer AI suggestions
-                const finalDate = (date !== today) ? date : (suggestion.suggestedDate || date);
-                const finalTime = time || suggestion.suggestedTime;
-
-                onAdd(title.trim(), aiType, finalDate || undefined, finalTime || undefined, undefined);
-                
-                setTitle('');
-                setDate(today);
-                setTime('');
-                setAIError(null);
-                onClose();
-                return;
-            } catch (error) {
-                console.error('AI Smart Add error during submit:', error);
-                // Fallback to local logic if AI fails
-            } finally {
-                setIsAILoading(false);
-            }
-        }
-
-        // Local Smart Logic Fallback (or if AI is disabled)
+        // Always use fast Local Smart Logic for submit
+        // AI is still accessible explicitly via the Sparkles button (handleSmartAdd)
         const parsed = parseNaturalDateTime(title);
         const finalDate = (date && date !== today) ? date : (parsed.date || date);
         const finalTime = time || parsed.time;
@@ -301,7 +236,7 @@ export default function AddTaskPanel({ isOpen, onClose, onAdd }: AddTaskPanelPro
                                 value={title}
                                 onChange={(e) => { setTitle(e.target.value); setAIError(null); }}
                                 placeholder="Type to add (e.g., 'Gym at 5pm')..."
-                                className="w-full bg-transparent text-xl sm:text-2xl font-semibold text-white placeholder:text-white/30 focus:outline-none py-2 pr-12 leading-relaxed"
+                                className="w-full bg-transparent text-xl sm:text-2xl font-semibold text-white placeholder:text-white/30 focus:outline-none py-2 pr-16 leading-relaxed"
                             />
                             {/* Inside-Input Sparkle Button */}
                             <button
@@ -408,7 +343,7 @@ export default function AddTaskPanel({ isOpen, onClose, onAdd }: AddTaskPanelPro
                             {/* Row 2: Add Task Button (Full Width) */}
                             <button
                                 type="submit"
-                                disabled={!title.trim()}
+                                disabled={!title.trim() || isAILoading}
                                 className="w-full bg-slate-800 hover:bg-slate-700 text-indigo-400 hover:text-indigo-300 px-5 py-3 rounded-xl text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 border border-white/5 shadow-lg shadow-black/20"
                             >
                                 <Plus className="w-4 h-4" />

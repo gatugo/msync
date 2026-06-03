@@ -82,9 +82,9 @@ export default function ScoreGauge({
       <div className="flex flex-col justify-center leading-none z-10 pr-1">
         <div className="flex items-baseline gap-0.5">
           <span className="text-sm sm:text-base font-black text-white tracking-tight">{score}</span>
-          <span className="text-[8px] font-bold text-slate-500">/100</span>
+          <span className="text-[8px] font-bold text-slate-500 hidden sm:inline">/100</span>
         </div>
-        <span className="text-[7px] font-black uppercase tracking-widest text-indigo-400 group-hover:text-indigo-300 transition-colors mt-0.5">
+        <span className="text-[7px] font-black uppercase tracking-widest text-indigo-400 group-hover:text-indigo-300 transition-colors mt-0.5 hidden sm:block">
           {balance}
         </span>
       </div>

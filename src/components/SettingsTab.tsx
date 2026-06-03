@@ -94,7 +94,7 @@ export default function SettingsTab({ showGoals, setShowGoals, handleImport, han
             onScroll={handleScroll}
             className="h-full p-4 sm:p-6 relative overflow-y-auto custom-scrollbar scroll-smooth"
         >
-            <div className="max-w-3xl mx-auto w-full space-y-6 pb-32 sm:pb-40">
+            <div className="max-w-5xl mx-auto w-full space-y-6 pb-32 sm:pb-40">
                 <div className="flex items-center justify-between">
                     <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Settings</h2>
                 </div>
@@ -318,8 +318,8 @@ export default function SettingsTab({ showGoals, setShowGoals, handleImport, han
                     className="flex items-center justify-between w-full p-5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
                 >
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 group-hover:text-amber-500 transition-colors shadow-inner">
-                            <span className="material-icons-round text-2xl">dns</span>
+                        <div className="w-12 h-12 rounded-2xl bg-white/10 dark:bg-slate-800/50 flex items-center justify-center p-2.5 group-hover:scale-110 transition-transform duration-500 shadow-inner">
+                            <img src="/datalab_logo.png" alt="Data Lab" className="w-full h-full object-contain brightness-110" />
                         </div>
                         <div className="text-left">
                             <h3 className="font-bold text-slate-900 dark:text-white tracking-tight">Data Management</h3>
@@ -356,12 +356,12 @@ export default function SettingsTab({ showGoals, setShowGoals, handleImport, han
             {/* Data Management Modal (Glass Focus) */}
             {showDataModal && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300" onClick={() => setShowDataModal(false)}>
-                    <div className="bg-slate-900 border border-white/10 w-full max-w-sm rounded-3xl shadow-2xl p-7 space-y-8 animate-in zoom-in-95 duration-300 relative overflow-hidden" onClick={e => e.stopPropagation()}>
+                    <div className="bg-slate-900 border border-white/10 w-full max-w-sm rounded-3xl shadow-2xl p-5 sm:p-7 space-y-5 sm:space-y-8 animate-in zoom-in-95 duration-300 relative overflow-hidden" onClick={e => e.stopPropagation()}>
                         <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-[80px]" />
 
                         <div className="text-center space-y-3 relative">
-                            <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl mx-auto flex items-center justify-center shadow-xl shadow-indigo-500/20 rotate-3 group-hover:rotate-0 transition-transform">
-                                <span className="material-icons-round text-white text-3xl">dns</span>
+                            <div className="w-20 h-20 bg-gradient-to-br from-indigo-500/20 to-purple-600/20 rounded-3xl mx-auto flex items-center justify-center p-4 shadow-2xl shadow-indigo-500/20 rotate-3 group-hover:rotate-0 transition-all duration-500 border border-white/10 backdrop-blur-xl">
+                                <img src="/datalab_logo.png" alt="Data Lab" className="w-full h-full object-contain brightness-125 drop-shadow-[0_0_10px_rgba(99,102,241,0.5)]" />
                             </div>
                             <h3 className="text-2xl font-black text-white tracking-tight">Data Lab</h3>
                             <p className="text-sm text-slate-400 font-medium px-4">Maintain, back up, or restore your neural data snapshots</p>
@@ -401,9 +401,9 @@ export default function SettingsTab({ showGoals, setShowGoals, handleImport, han
                             </button>
                         </div>
 
-                        <div className="p-4 bg-amber-500/10 rounded-2xl border border-amber-500/20 flex gap-4 items-center">
-                            <span className="material-icons-round text-amber-500 text-2xl">psychiatry</span>
-                            <p className="text-[11px] font-bold text-amber-200/80 leading-snug">
+                        <div className="p-4 bg-amber-500/10 rounded-2xl border border-amber-500/20 flex gap-3 items-center text-left">
+                            <span className="material-icons-round text-amber-500 text-xl flex-shrink-0">psychiatry</span>
+                            <p className="text-[10px] sm:text-[11px] font-bold text-amber-200/80 leading-snug">
                                 Neural Sync will <span className="text-amber-400 uppercase tracking-widest">overwrite</span> current state.
                             </p>
                         </div>
@@ -419,6 +419,5 @@ export default function SettingsTab({ showGoals, setShowGoals, handleImport, han
             )}
             </div>
         </div>
-
     );
 }

@@ -318,7 +318,7 @@ export default function Home() {
               {/* New Task Button */}
               <button
                 onClick={() => setIsAddTaskOpen(!isAddTaskOpen)}
-                className={`flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-5 sm:py-2 rounded-full font-bold transition-all duration-300 shadow-xl active:scale-95 border ${isAddTaskOpen
+                className={`hidden sm:flex items-center gap-1.5 sm:gap-2 px-3 py-1.5 sm:px-5 sm:py-2 rounded-full font-bold transition-all duration-300 shadow-xl active:scale-95 border ${isAddTaskOpen
                   ? 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-white/10 text-slate-500 dark:text-slate-300'
                   : 'bg-gradient-to-b from-indigo-500 to-indigo-600 border-indigo-400/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_4px_14px_rgba(99,102,241,0.4)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_6px_20px_rgba(99,102,241,0.5)] hover:-translate-y-0.5 text-white'
                   }`}

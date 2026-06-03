@@ -45,45 +45,4 @@ describe('AI Persona Constraints', () => {
     });
 });
 
-describe('Hybrid Engine Fallback', () => {
-    beforeEach(() => {
-        vi.clearAllMocks();
-        process.env.STEPFUN_API_KEY = 'test-key';
-        process.env.GEMINI_API_KEY = 'test-gemini';
-        process.env.GROQ_API_KEY = 'test-groq';
-        process.env.AI_PROVIDER = 'stepfun';
-    });
 
-    it('should fallback to Gemini if StepFun JSON fails', async () => {
-        // We will mock global fetch
-        const mockFetch = vi.fn().mockImplementation((url) => {
-            if (typeof url === 'string' && url.includes('stepfun')) {
-                return Promise.resolve({
-                    ok: false,
-                    status: 503,
-                    text: () => Promise.resolve('Service Unavailable')
-                });
-            }
-            return Promise.resolve({ ok: true });
-        });
-        global.fetch = mockFetch;
-
-        const req = new NextRequest('http://localhost:3000/api/coach', {
-            method: 'POST',
-            headers: {
-                'authorization': 'Bearer fake-token',
-                'content-type': 'application/json'
-            },
-            body: JSON.stringify({
-                mode: 'schedule_assist',
-                taskTitle: 'Test Task'
-            })
-        });
-
-        const res = await POST(req);
-        const data = await res.json();
-
-        expect(res.status).toBe(200);
-        expect(data.response).toBe('{"fallbackToGemini": true}');
-    });
-});

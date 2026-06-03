@@ -94,7 +94,7 @@ async function callStepFunStream(prompt: string): Promise<ReadableStream> {
     return response.body!;
 }
 
-// ============ PROVIDER 0: STEPFUN JSON ============
+// ============ JSON HANDLERS ============
 async function callStepFunJSON(prompt: string): Promise<string> {
     const apiKey = process.env.STEPFUN_API_KEY;
     const apiUrl = process.env.STEPFUN_API_URL || 'https://api.stepfun.ai/v1/chat/completions';
@@ -130,92 +130,6 @@ async function callStepFunJSON(prompt: string): Promise<string> {
     const data = await response.json();
     console.log('✅ StepFun JSON response received');
     return data.choices[0]?.message?.content || '{}';
-}
-
-// ============ PROVIDER 1: GEMINI STREAM ============
-async function callGeminiStream(prompt: string): Promise<ReadableStream> {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error('GEMINI_API_KEY not set');
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ 
-        model: 'gemini-1.5-flash',
-        systemInstruction: getSystemPrompt('gemini')
-    });
-
-    const result = await model.generateContentStream(prompt);
-
-    const stream = new ReadableStream({
-        async start(controller) {
-            const encoder = new TextEncoder();
-            try {
-                for await (const chunk of result.stream) {
-                    const chunkText = chunk.text();
-                    if (chunkText) {
-                        controller.enqueue(encoder.encode(chunkText));
-                    }
-                }
-                controller.close();
-            } catch (err) {
-                console.error('[Gemini] Stream Error:', err);
-                controller.error(err);
-            }
-        },
-    });
-    return stream;
-}
-
-// ============ PROVIDER 2: GROQ STREAM (BACKUP) ============
-async function callGroqStream(prompt: string): Promise<ReadableStream> {
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) throw new Error('GROQ_API_KEY not set');
-
-    const groq = new Groq({ apiKey });
-    const completion = await groq.chat.completions.create({
-        messages: [{ role: 'system', content: getSystemPrompt('groq') }, { role: 'user', content: prompt }],
-        model: 'llama-3.3-70b-versatile',
-        stream: true,
-        temperature: 0.7,
-        max_tokens: 1024,
-    });
-
-    const stream = new ReadableStream({
-        async start(controller) {
-            const encoder = new TextEncoder();
-            for await (const chunk of completion) {
-                const content = chunk.choices[0]?.delta?.content || '';
-                if (content) controller.enqueue(encoder.encode(content));
-            }
-            controller.close();
-        },
-    });
-    return stream;
-}
-
-// ============ JSON HANDLERS ============
-async function callGeminiJSON(prompt: string): Promise<string> {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error('GEMINI_API_KEY not set');
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-        model: 'gemini-1.5-flash',
-        generationConfig: { responseMimeType: "application/json" }
-    });
-    const result = await model.generateContent([getSystemPrompt('gemini'), "Respond with valid JSON.", prompt]);
-    return result.response.text();
-}
-
-async function callGroqJSON(prompt: string): Promise<string> {
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) throw new Error('GROQ_API_KEY not set');
-    const groq = new Groq({ apiKey });
-    const completion = await groq.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
-        messages: [{ role: 'system', content: getSystemPrompt('groq') }, { role: 'user', content: prompt }],
-        response_format: { type: 'json_object' },
-        max_tokens: 500
-    });
-    return completion.choices[0]?.message?.content || '{}';
 }
 
 
@@ -330,60 +244,28 @@ export async function POST(req: NextRequest) {
 
         const body = CoachRequestSchema.parse(rawBody);
         const prompt = buildPrompt(body);
-        const aiProvider = process.env.AI_PROVIDER || 'stepfun';
+        const aiProvider = 'stepfun';
 
         // --- JSON MODE (Schedule Assist) ---
         if (body.mode === 'schedule_assist') {
             try {
-                let json: string;
-
-                // Try primary provider first
-                if (aiProvider === 'stepfun') {
-                    try {
-                        json = await callStepFunJSON(prompt);
-                    } catch (err) {
-                        console.error('⚠️ StepFun JSON Failed:', err);
-                        // Fallback to Gemini
-                        json = await callGeminiJSON(prompt);
-                    }
-                } else if (aiProvider === 'gemini') {
-                    json = await callGeminiJSON(prompt);
-                } else {
-                    json = await callGroqJSON(prompt);
-                }
-
+                const json = await callStepFunJSON(prompt);
                 return NextResponse.json({ success: true, response: json });
             } catch (err) {
-                console.error('All AI services failed:', err);
-                return NextResponse.json({ success: false, error: 'All AI services busy' }, { status: 503 });
+                console.error('AI service failed:', err);
+                return NextResponse.json({ success: false, error: 'AI service busy' }, { status: 503 });
             }
         }
 
         // --- STREAMING MODE (Chat/Advice) ---
         else {
             try {
-                let stream: ReadableStream;
-
-                // Try primary provider first
-                if (aiProvider === 'stepfun') {
-                    try {
-                        const stepfunStream = await callStepFunStream(prompt);
-                        stream = await transformStepFunStream(stepfunStream);
-                    } catch (err) {
-                        console.error('⚠️ StepFun Stream Failed:', err);
-                        // Fallback to Gemini
-                        stream = await callGeminiStream(prompt);
-                    }
-                } else if (aiProvider === 'gemini') {
-                    stream = await callGeminiStream(prompt);
-                } else {
-                    stream = await callGroqStream(prompt);
-                }
-
+                const stepfunStream = await callStepFunStream(prompt);
+                const stream = await transformStepFunStream(stepfunStream);
                 return new NextResponse(stream);
             } catch (err) {
-                console.error('All AI services failed:', err);
-                return NextResponse.json({ error: 'All AI services busy.' }, { status: 503 });
+                console.error('AI service failed:', err);
+                return NextResponse.json({ error: 'AI service busy.' }, { status: 503 });
             }
         }
 

@@ -317,28 +317,51 @@ export default function TimelineView({
     return (
         <div className="bg-slate-800/40 backdrop-blur-md border border-white/5 rounded-2xl overflow-hidden shadow-xl flex flex-col h-full flex-1 min-h-0 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Header */}
-            <div className="p-4 border-b border-white/5 bg-slate-900/40 flex flex-col gap-4 sm:flex-row justify-between items-center shrink-0 relative">
+            <div className="p-4 border-b border-white/5 bg-slate-900/40 flex flex-col gap-3 sm:flex-row justify-between sm:items-center shrink-0 relative">
+                {/* First Row on Mobile: View toggle and navigation */}
                 <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-start">
-                    <div className="flex bg-white/5 p-1 rounded-lg">
+                    <div className="flex bg-white/5 p-1 rounded-lg shrink-0">
                         <button onClick={() => setViewMode('day')} className={`p-1.5 rounded-md transition-all duration-200 ${viewMode === 'day' ? 'bg-indigo-500 text-white shadow-sm' : 'text-white/50 hover:text-white hover:bg-white/5'}`}><LayoutList className="w-4 h-4" /></button>
                         <button onClick={() => setViewMode('week')} className={`p-1.5 rounded-md transition-all duration-200 ${viewMode === 'week' ? 'bg-indigo-500 text-white shadow-sm' : 'text-white/50 hover:text-white hover:bg-white/5'}`}><CalendarIcon className="w-4 h-4" /></button>
                         <button onClick={() => setViewMode('month')} className={`p-1.5 rounded-md transition-all duration-200 ${viewMode === 'month' ? 'bg-indigo-500 text-white shadow-sm' : 'text-white/50 hover:text-white hover:bg-white/5'}`}><Grid className="w-4 h-4" /></button>
                     </div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 shrink-0">
                         <button onClick={() => navigate('prev')} className="p-1.5 hover:bg-white/10 rounded-lg text-white/70 hover:text-white transition-all active:scale-90"><ChevronLeft className="w-4 h-4" /></button>
                         <button onClick={goToday} className="text-xs font-bold px-2 py-1 bg-white/5 hover:bg-white/10 rounded border border-white/10 text-white/70 hover:text-white transition-all active:scale-95">Today</button>
                         <button onClick={() => navigate('next')} className="p-1.5 hover:bg-white/10 rounded-lg text-white/70 hover:text-white transition-all active:scale-90"><ChevronRight className="w-4 h-4" /></button>
                     </div>
-                    <h3 className="text-white font-semibold text-xs sm:text-sm text-center min-w-[80px] md:hidden">
-                        {getHeaderLabel(true)}
-                    </h3>
                 </div>
 
-                {/* Centered Date Label for Desktop/Tablet */}
+                {/* Second Row on Mobile: Left aligned date label, and right-aligned Add button */}
+                <div className="flex sm:hidden items-center justify-between w-full">
+                    <h3 className="text-white font-semibold text-sm leading-none bg-gradient-to-r from-slate-100 to-slate-300 text-transparent bg-clip-text select-none md:hidden">
+                        {getHeaderLabel()}
+                    </h3>
+                    <button
+                        onClick={() => {
+                            const now = new Date();
+                            const pad = (n: number) => String(n).padStart(2, '0');
+                            const defaultTime = `${pad(now.getHours())}:${now.getMinutes() < 30 ? '00' : '30'}`;
+                            onRequestCreateTask(formatDateKey(currentDate), defaultTime);
+                        }}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 hover:border-indigo-500/40 hover:text-white shadow-[0_0_15px_rgba(99,102,241,0.08)] active:scale-95 transition-all duration-300 shrink-0 cursor-pointer"
+                    >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Task</span>
+                    </button>
+                </div>
+
+                {/* Mid-screen inline date label (hidden on mobile, visible on tablet, hidden on desktop where center label is used) */}
+                <div className="hidden sm:block md:hidden text-white font-semibold text-sm select-none">
+                    {getHeaderLabel()}
+                </div>
+
+                {/* Centered Date Label for Desktop (md and up) */}
                 <h3 className="hidden md:block absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white font-bold text-base tracking-wide pointer-events-none bg-gradient-to-r from-slate-100 to-slate-300 text-transparent bg-clip-text select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.2)]">
                     {getHeaderLabel()}
                 </h3>
 
+                {/* Add button for Tablet/Desktop */}
                 <button
                     onClick={() => {
                         const now = new Date();
@@ -346,11 +369,10 @@ export default function TimelineView({
                         const defaultTime = `${pad(now.getHours())}:${now.getMinutes() < 30 ? '00' : '30'}`;
                         onRequestCreateTask(formatDateKey(currentDate), defaultTime);
                     }}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs font-bold text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 hover:border-indigo-500/40 hover:text-white shadow-[0_0_15px_rgba(99,102,241,0.08)] hover:shadow-[0_0_20px_rgba(99,102,241,0.2)] hover:scale-[1.03] active:scale-95 transition-all duration-300 ease-out shrink-0 cursor-pointer"
+                    className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 hover:border-indigo-500/40 hover:text-white shadow-[0_0_15px_rgba(99,102,241,0.08)] hover:shadow-[0_0_20px_rgba(99,102,241,0.2)] hover:scale-[1.03] active:scale-95 transition-all duration-300 ease-out shrink-0 cursor-pointer"
                 >
                     <Plus className="w-3.5 h-3.5" />
-                    <span className="hidden xs:inline">Add Task</span>
-                    <span className="xs:hidden">Add</span>
+                    <span>Add Task</span>
                 </button>
             </div>
 

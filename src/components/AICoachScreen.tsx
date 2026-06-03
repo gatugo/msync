@@ -65,7 +65,7 @@ export default function AICoachScreen({
     onEditTask
 }: AICoachScreenProps) {
     const [mode, setMode] = useState<CoachMode>(initialMode);
-    const [isHudOpen, setIsHudOpen] = useState(true);
+    const [isHudOpen, setIsHudOpen] = useState(false);
     const [summaryInterval, setSummaryInterval] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
     const displayMode = (mode === 'morning_brief' || mode === 'evening_recap' || mode === 'night_reflection') ? 'evening_recap' : mode;
     const [question, setQuestion] = useState('');
@@ -345,6 +345,10 @@ export default function AICoachScreen({
                     summaryInterval: activeMode === 'summary' ? (overrideInterval || summaryInterval) : undefined,
                 }),
             });
+
+            if (!res.ok) {
+                throw new Error(`HTTP Error ${res.status}`);
+            }
 
             if (!res.body) throw new Error('No stream body');
             

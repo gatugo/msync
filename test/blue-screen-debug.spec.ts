@@ -12,18 +12,14 @@ test.describe('MindSync App', () => {
     const body = page.locator('body');
     await expect(body).toBeVisible();
 
-    // Check if we see login prompt or main app
-    const loginHeading = page.locator('text=Sign in to continue');
-    const mainHeading = page.locator('text=MindSync');
+    // Wait for the hydration loading screen to disappear
+    await expect(page.locator('text=Loading...')).toBeHidden({ timeout: 10000 });
 
-    // If not logged in, should see "Sign in to continue"
-    if (await loginHeading.isVisible()) {
-      console.log('✅ Login page is showing');
-    } else if (await mainHeading.isVisible()) {
-      console.log('⚠️ Main app is showing (user might be logged in)');
-    } else {
-      console.log('❌ Neither login nor main app is visible');
-    }
+    // Check if we see login prompt
+    const loginHeading = page.locator('text=Sign in to continue');
+    await expect(loginHeading).toBeVisible();
+
+    console.log('✅ Login page is showing');
 
     // Take screenshot for debugging
     await page.screenshot({ path: 'test-screenshot.png', fullPage: true });

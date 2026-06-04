@@ -51,3 +51,7 @@ next-env.d.ts
 docs/stitch/
 docs/screenshots/
 docs/demo/
+
+# Scratch & Test Debug
+scratch/
+test-*.png

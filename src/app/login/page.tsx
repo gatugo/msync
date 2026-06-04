@@ -5,12 +5,13 @@ import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Lock, Mail } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LoginPage() {
     const router = useRouter();
     const [isMounted, setIsMounted] = useState(false);
+    const [authMode, setAuthMode] = useState<'password' | 'magic_link'>('password');
 
     useEffect(() => {
         setIsMounted(true);
@@ -44,6 +45,34 @@ export default function LoginPage() {
                     <p className="text-slate-400">Sync your mind. Find your flow.</p>
                 </div>
 
+                {/* Auth Mode Toggle */}
+                <div className="flex bg-slate-900/50 p-1 rounded-xl border border-white/5 mb-4">
+                    <button
+                        type="button"
+                        onClick={() => setAuthMode('password')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                            authMode === 'password'
+                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+                                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                        }`}
+                    >
+                        <Lock className="w-4 h-4" />
+                        Password
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setAuthMode('magic_link')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                            authMode === 'magic_link'
+                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20'
+                                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                        }`}
+                    >
+                        <Mail className="w-4 h-4" />
+                        Magic Link
+                    </button>
+                </div>
+
                 <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 shadow-xl backdrop-blur-sm">
                     <Auth
                         supabaseClient={supabase}
@@ -64,7 +93,7 @@ export default function LoginPage() {
                         }}
                         theme="dark"
                         providers={[]}
-                        magicLink={true}
+                        magicLink={authMode === 'magic_link'}
                         redirectTo={typeof window !== 'undefined' ? `${window.location.origin}/` : undefined}
                     />
                 </div>

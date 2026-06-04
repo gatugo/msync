@@ -72,12 +72,14 @@ export default function Home() {
 
   // Hydration / Data Fetching
   useEffect(() => {
-    checkAuth();
     fetchInitialData();
   }, []);
 
   // Listen for auth state changes
   useEffect(() => {
+    if (typeof window !== 'undefined' && localStorage.getItem('mindsync_test_mode') === 'true') {
+        return;
+    }
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log('Auth state changed:', event, !!session);

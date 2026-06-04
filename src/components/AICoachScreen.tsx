@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, ReactNode } from 'react';
+import { useState, useRef, useEffect, ReactNode, useMemo } from 'react';
 import { X, Send, Bot, Sparkles, TrendingUp, MessageCircle, Trash2, User, PlusCircle, CheckCircle2, RotateCw, Brain, Cpu, Clock, Flag, Zap, Activity, ChevronDown } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { supabase } from '@/lib/supabase';
@@ -25,7 +25,7 @@ interface AICoachScreenProps {
 type CoachMode = 'advice' | 'chat' | 'summary' | 'predict' | 'evening_recap' | 'morning_brief' | 'night_reflection';
 
 interface SuggestedAction {
-    type: 'CREATE_TASK' | 'REMEMBER';
+    type: 'CREATE_TASK' | 'REMEMBER' | 'RESCHEDULE_TASK' | 'SORT_TASKS' | 'LEARN_PATTERN';
     title?: string;
     taskType?: TaskType;
     duration?: number;
@@ -33,6 +33,10 @@ interface SuggestedAction {
     scheduledTime?: string;
     projectedScore?: number; // Predicted impact on Ego Score (+5, -3, etc.)
     fact?: string;
+    taskId?: string;
+    taskIds?: string[];
+    pattern?: string;
+    confidence?: number;
 }
 
 interface Message {
@@ -82,10 +86,39 @@ export default function AICoachScreen({
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const addTask = useStore((state) => state.addTask);
     const moveTask = useStore((state) => state.moveTask);
+    const updateTask = useStore((state) => state.updateTask);
     const preferences = useStore((state) => state.preferences);
     const aiMemory = useStore((state) => state.aiMemory);
     const addMemory = useStore((state) => state.addMemory);
+    const isOnline = useStore((state) => state.isOnline);
+    const setIsOnline = useStore((state) => state.setIsOnline);
+    const [connectionToast, setConnectionToast] = useState<{show: boolean, type: 'online' | 'offline'} | null>(null);
     const hasAutoTriggered = useRef(false);
+
+    useEffect(() => {
+        const handleOnline = () => {
+            setIsOnline(true);
+            setConnectionToast({show: true, type: 'online'});
+            setTimeout(() => setConnectionToast(null), 4000);
+        };
+        const handleOffline = () => {
+            setIsOnline(false);
+            setConnectionToast({show: true, type: 'offline'});
+            setTimeout(() => setConnectionToast(null), 4000);
+        };
+
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+        if (typeof navigator !== 'undefined') {
+            setIsOnline(navigator.onLine);
+        }
+
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, [setIsOnline]);
 
     const now = new Date();
     const currentDateKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -279,6 +312,14 @@ export default function AICoachScreen({
             );
         } else if (action.type === 'REMEMBER' && action.fact) {
             addMemory(action.fact);
+        } else if (action.type === 'LEARN_PATTERN' && action.pattern) {
+            useStore.getState().addLearnedPattern(action.pattern, action.confidence);
+        } else if (action.type === 'RESCHEDULE_TASK' && action.taskId) {
+            updateTask(action.taskId, {
+                scheduledDate: action.scheduledDate,
+                scheduledTime: action.scheduledTime,
+                duration: action.duration
+            });
         }
     };
 
@@ -309,7 +350,7 @@ export default function AICoachScreen({
         setError('');
 
         try {
-            if (preferences.aiEnabled === false) {
+            if (preferences.aiEnabled === false || preferences.forceOfflineMode || !isOnline) {
                 await runOfflineLogic(activeMode, currentQuestion, overrideInterval, aiMsgId);
                 setIsLoading(false);
                 setIsTyping(false);
@@ -373,6 +414,14 @@ export default function AICoachScreen({
 
             const { cleanText, actions, thought } = parseResponse(fullText);
             setMessages(prev => prev.map(msg => msg.id === aiMsgId ? { ...msg, content: cleanText, actions: actions.length > 0 ? actions : undefined, thought } : msg));
+
+            actions.forEach(action => {
+                if (action.type === 'REMEMBER' || action.type === 'LEARN_PATTERN') {
+                    handleExecuteAction(action, aiMsgId);
+                } else if (preferences.autoArrangeTasks && (action.type === 'RESCHEDULE_TASK' || action.type === 'SORT_TASKS')) {
+                    handleExecuteAction(action, aiMsgId);
+                }
+            });
         } catch (err) {
             console.warn('AI Unavailable, switching to Offline Mode', err);
             runOfflineLogic(activeMode, currentQuestion, overrideInterval, aiMsgId);
@@ -398,7 +447,8 @@ export default function AICoachScreen({
         const childCount = completedTasks.filter(t => t.type === 'CHILD').length;
         const restCount = completedTasks.filter(t => t.type === 'REST').length;
         
-        const insight = generateSmartInsight(balance as any, score, adultCount, childCount, restCount);
+        const learnedPatterns = useStore.getState().learnedPatterns;
+        const insight = generateSmartInsight(balance as any, score, adultCount, childCount, restCount, learnedPatterns);
 
         if (activeMode === 'advice') {
            responseText = `**[OFFLINE MODE]**\n\n${insight}`;
@@ -449,6 +499,14 @@ ${insight}
         const simulatedThought = `Offline parser completed. Inputs received: Mode: "${activeMode}", Balance: "${balance}". Inferred scheduling requirements based on key text phrases. Injecting custom scheduler recommendation template to resolve timeline conflicts offline.`;
 
         setMessages(prev => prev.map(msg => msg.id === aiMsgId ? { ...msg, content: responseText, actions: actions.length > 0 ? actions : undefined, thought: simulatedThought } : msg));
+
+        actions.forEach(action => {
+            if (action.type === 'REMEMBER' || action.type === 'LEARN_PATTERN') {
+                handleExecuteAction(action, aiMsgId);
+            } else if (preferences.autoArrangeTasks && (action.type === 'RESCHEDULE_TASK' || action.type === 'SORT_TASKS')) {
+                handleExecuteAction(action, aiMsgId);
+            }
+        });
     };
 
     const deleteMessage = (id: string) => setMessages(prev => prev.filter(msg => msg.id !== id));
@@ -461,32 +519,54 @@ ${insight}
     };
 
     // Calculate dates and stats for the Right diagnostics HUD
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    
-    const todayTasks = tasks.filter(t => t.scheduledDate === todayStr || (t.status === 'DONE' && t.completedAt?.startsWith(todayStr)));
-    const adultTasks = todayTasks.filter(t => t.type === 'ADULT');
-    const childTasks = todayTasks.filter(t => t.type === 'CHILD');
-    const restTasks = todayTasks.filter(t => t.type === 'REST');
+    const {
+        todayStr, todayTasks, adultTasks, childTasks, restTasks,
+        completedAdult, completedChild, completedRest,
+        totalAdult, totalChild, totalRest,
+        upcomingTasks, activeGoals
+    } = useMemo(() => {
+        const tStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const tTasks = tasks.filter(t => t.scheduledDate === tStr || (t.status === 'DONE' && t.completedAt?.startsWith(tStr)));
+        const aTasks = tTasks.filter(t => t.type === 'ADULT');
+        const cTasks = tTasks.filter(t => t.type === 'CHILD');
+        const rTasks = tTasks.filter(t => t.type === 'REST');
 
-    const completedAdult = adultTasks.filter(t => t.status === 'DONE').length;
-    const completedChild = childTasks.filter(t => t.status === 'DONE').length;
-    const completedRest = restTasks.filter(t => t.status === 'DONE').length;
-
-    const totalAdult = adultTasks.length;
-    const totalChild = childTasks.length;
-    const totalRest = restTasks.length;
-
-    const upcomingTasks = tasks
-        .filter(t => t.scheduledDate === todayStr && t.status !== 'DONE')
-        .sort((a, b) => (a.scheduledTime || '') > (b.scheduledTime || '') ? 1 : -1)
-        .slice(0, 3);
-
-    const activeGoals = goals.filter(g => !g.completed).slice(0, 2);
+        return {
+            todayStr: tStr,
+            todayTasks: tTasks, adultTasks: aTasks, childTasks: cTasks, restTasks: rTasks,
+            completedAdult: aTasks.filter(t => t.status === 'DONE').length,
+            completedChild: cTasks.filter(t => t.status === 'DONE').length,
+            completedRest: rTasks.filter(t => t.status === 'DONE').length,
+            totalAdult: aTasks.length,
+            totalChild: cTasks.length,
+            totalRest: rTasks.length,
+            upcomingTasks: tasks
+                .filter(t => t.scheduledDate === tStr && t.status !== 'DONE')
+                .sort((a, b) => (a.scheduledTime || '') > (b.scheduledTime || '') ? 1 : -1)
+                .slice(0, 3),
+            activeGoals: goals.filter(g => !g.completed).slice(0, 2)
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tasks, goals, now.getDate()]);
 
     return (
         <div className="h-full flex flex-col bg-[#0f172a]/65 backdrop-blur-2xl overflow-hidden text-white border border-white/5 rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.45)] relative">
             {/* Ambient Background Aura bleed-through enhancement */}
             <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/5 via-transparent to-pink-500/5 pointer-events-none z-0" />
+
+            {/* Connection Toast */}
+            {connectionToast && connectionToast.show && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-top-4 fade-in duration-300">
+                    <div className={`flex items-center gap-2 px-4 py-2 rounded-full shadow-lg border backdrop-blur-xl ${connectionToast.type === 'online' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-amber-500/10 border-amber-500/20 text-amber-400'}`}>
+                        <span className="material-icons-round text-[16px]">
+                            {connectionToast.type === 'online' ? 'wifi' : 'wifi_off'}
+                        </span>
+                        <span className="text-xs font-black uppercase tracking-widest">
+                            {connectionToast.type === 'online' ? 'Connection Restored' : 'Offline Mode Active'}
+                        </span>
+                    </div>
+                </div>
+            )}
 
             {/* Shared Header */}
             <div className="flex items-center justify-between px-5 py-3 border-b border-white/5 bg-slate-950/25 backdrop-blur-md shrink-0 z-10 relative gap-4">
@@ -502,11 +582,11 @@ ${insight}
                     <div className="flex flex-col justify-center gap-0.5">
                         <div className="flex items-center gap-2">
                             <h2 className="font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 text-base sm:text-lg leading-none tracking-tight drop-shadow-sm">
-                                {preferences.aiEnabled !== false ? 'AI Coach' : 'Local Coach'}
+                                {(preferences.aiEnabled !== false && !preferences.forceOfflineMode && isOnline) ? 'AI Coach' : 'Local Coach'}
                             </h2>
                             <span className="relative flex h-2 w-2 mt-0.5">
-                                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${preferences.aiEnabled !== false ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
-                                <span className={`relative inline-flex rounded-full h-2 w-2 ${preferences.aiEnabled !== false ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,1)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,1)]'}`}></span>
+                                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${(preferences.aiEnabled !== false && !preferences.forceOfflineMode && isOnline) ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
+                                <span className={`relative inline-flex rounded-full h-2 w-2 ${(preferences.aiEnabled !== false && !preferences.forceOfflineMode && isOnline) ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,1)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,1)]'}`}></span>
                             </span>
                         </div>
                         <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest font-black mt-0.5">

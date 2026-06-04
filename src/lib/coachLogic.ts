@@ -190,7 +190,7 @@ Respond with ONLY this JSON format:
 }
 
 export interface SuggestedAction {
-    type: 'CREATE_TASK' | 'REMEMBER';
+    type: 'CREATE_TASK' | 'REMEMBER' | 'RESCHEDULE_TASK' | 'SORT_TASKS' | 'LEARN_PATTERN';
     title?: string;
     taskType?: 'ADULT' | 'CHILD' | 'REST';
     duration?: number;
@@ -198,6 +198,10 @@ export interface SuggestedAction {
     scheduledTime?: string;
     projectedScore?: number;
     fact?: string;
+    taskId?: string;
+    taskIds?: string[];
+    pattern?: string;
+    confidence?: number;
 }
 
 export function parseCoachResponse(text: string): { cleanText: string; actions: SuggestedAction[]; thought?: string } {
@@ -255,7 +259,7 @@ export function parseCoachResponse(text: string): { cleanText: string; actions: 
 
     // 2. Extract Actions
     const actions: SuggestedAction[] = [];
-    const actionRegex = /\[ACTION:\s*(CREATE_TASK|REMEMBER)\s*\|\s*([^\]]+)\]/gi;
+    const actionRegex = /\[ACTION:\s*(CREATE_TASK|REMEMBER|RESCHEDULE_TASK|SORT_TASKS|LEARN_PATTERN)\s*\|\s*([^\]]+)\]/gi;
     cleanText = cleanText.replace(actionRegex, (match, actionType, content) => {
         const typeUpper = actionType.toUpperCase();
         
@@ -263,6 +267,36 @@ export function parseCoachResponse(text: string): { cleanText: string; actions: 
             const fact = content.trim();
             if (fact) {
                 actions.push({ type: 'REMEMBER', fact });
+            }
+            return '';
+        }
+
+        if (typeUpper === 'LEARN_PATTERN') {
+            const parts = content.split('|').map((p: string) => p.trim());
+            if (parts.length >= 2) {
+                actions.push({ type: 'LEARN_PATTERN', pattern: parts[0], confidence: parseFloat(parts[1]) || 0.5 });
+            }
+            return '';
+        }
+
+        if (typeUpper === 'RESCHEDULE_TASK') {
+            const parts = content.split('|').map((p: string) => p.trim());
+            if (parts.length >= 3) {
+                actions.push({
+                    type: 'RESCHEDULE_TASK',
+                    taskId: parts[0],
+                    scheduledDate: parts[1],
+                    scheduledTime: parts[2],
+                    duration: parts.length >= 4 ? parseInt(parts[3]) : undefined
+                });
+            }
+            return '';
+        }
+
+        if (typeUpper === 'SORT_TASKS') {
+            const taskIds = content.split(',').map((p: string) => p.trim()).filter(Boolean);
+            if (taskIds.length > 0) {
+                actions.push({ type: 'SORT_TASKS', taskIds });
             }
             return '';
         }

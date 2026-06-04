@@ -10,7 +10,7 @@ import { supabase } from '@/lib/supabase';
 // ============ SECURITY: Distributed Rate Limiting ============
 const REQUESTS_PER_MINUTE = 15;
 
-// Initialize Redis only if env vars are present, otherwise fallback to in-memory (best-effort)
+// Initialize Redis only if env vars are present
 const redis = process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
     ? new Redis({
         url: process.env.UPSTASH_REDIS_REST_URL,
@@ -18,51 +18,43 @@ const redis = process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_RE
     })
     : null;
 
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
-
 async function isRateLimited(userId: string): Promise<boolean> {
-    if (redis) {
-        try {
-            const key = `rate_limit:${userId}`;
-            const currentRequests = await redis.incr(key);
-            
-            if (currentRequests === 1) {
-                await redis.expire(key, 60);
-            }
-            
-            return currentRequests > REQUESTS_PER_MINUTE;
-        } catch (error) {
-            console.error('Redis rate limiting error, falling back to memory:', error);
-            // Fallback to in-memory if Redis fails
+    if (!redis) {
+        console.warn('Redis is not configured. Rate limiting is disabled.');
+        return false;
+    }
+
+    try {
+        const key = `rate_limit:${userId}`;
+        const pipeline = redis.pipeline();
+        pipeline.incr(key);
+        const results = await pipeline.exec();
+        
+        const currentRequests = results[0] as number;
+        
+        // Only set expiry on the very first request of the window
+        if (currentRequests === 1) {
+            await redis.expire(key, 60);
         }
+        
+        return currentRequests > REQUESTS_PER_MINUTE;
+    } catch (error) {
+        console.error('Redis rate limiting error:', error);
+        // If Redis fails, fail open to avoid locking the admin out, but log heavily
+        return false;
     }
-
-    // In-memory fallback
-    const now = Date.now();
-    const userLimit = rateLimitMap.get(userId) || { count: 0, resetTime: now + 60 * 1000 };
-
-    if (userLimit.resetTime < now) {
-        userLimit.count = 0;
-        userLimit.resetTime = now + 60 * 1000;
-    }
-
-    if (userLimit.count >= REQUESTS_PER_MINUTE) return true;
-
-    userLimit.count++;
-    rateLimitMap.set(userId, userLimit);
-    return false;
 }
 
 // ============ SECURITY: Input Validation ============
 const CoachRequestSchema = z.object({
     mode: z.string().max(30),
-    tasks: z.array(z.any()).max(50).optional(),
+    tasks: z.array(z.any()).max(1000).optional(),
     score: z.number().optional(),
     balance: z.string().max(30).optional(),
     question: z.string().max(1000).optional(), // Protect against prompt injection / massive tokens
     taskTitle: z.string().max(150).optional(),
-    history: z.array(z.any()).max(50).optional(),
-    goals: z.array(z.any()).max(50).optional(),
+    history: z.array(z.any()).max(1000).optional(),
+    goals: z.array(z.any()).max(1000).optional(),
     preferences: z.any().optional(),
     conversationHistory: z.array(z.any()).max(50).optional(),
     localDate: z.string().max(20).optional(),

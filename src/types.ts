@@ -9,6 +9,16 @@ export interface UserPreferences {
     sleepStartTime?: string; // HH:MM
     sleepEndTime?: string; // HH:MM
     aiEnabled?: boolean;
+    autoArrangeTasks?: boolean;
+    forceOfflineMode?: boolean;
+}
+
+export interface LearnedPattern {
+    id: string;
+    pattern: string;
+    confidence: number; // 0.0 to 1.0
+    createdAt: string;
+    lastApplied?: string;
 }
 
 export interface Task {

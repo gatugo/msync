@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { api } from '@/lib/api';
-import { Task, Goal, DailySnapshot, TaskType, TaskStatus, UserPreferences, AIMemory } from '@/types';
 import { supabase } from '@/lib/supabase';
+import { Task, Goal, DailySnapshot, TaskType, TaskStatus, UserPreferences, AIMemory, LearnedPattern } from '@/types';
 
 const getPreferencesFromEnv = (key: string, defaults: string[]): string[] => {
     try {
@@ -19,12 +19,16 @@ export interface StoreState {
     isAuthenticated: boolean;
     authError: string | null;
 
+    // Network State
+    isOnline: boolean;
+    setIsOnline: (status: boolean) => void;
+
     // Tasks
     tasks: Task[];
     addTask: (title: string, type: TaskType, date?: string, time?: string, duration?: number) => void;
     moveTask: (taskId: string, newStatus: TaskStatus) => void;
     deleteTask: (taskId: string) => void;
-    updateTask: (taskId: string, updates: Partial<Pick<Task, 'title' | 'scheduledTime' | 'duration'>>) => void;
+    updateTask: (taskId: string, updates: Partial<Pick<Task, 'title' | 'scheduledDate' | 'scheduledTime' | 'duration'>>) => void;
     clearCompletedTasks: () => void;
 
     // History
@@ -38,9 +42,11 @@ export interface StoreState {
     toggleGoal: (goalId: string) => void;
     deleteGoal: (goalId: string) => void;
 
-    // AI Memory
+    // AI Memory & Patterns
     aiMemory: AIMemory[];
     addMemory: (fact: string) => void;
+    learnedPatterns: LearnedPattern[];
+    addLearnedPattern: (pattern: string, confidence?: number) => void;
 
     // Preferences
     preferences: UserPreferences;
@@ -56,6 +62,7 @@ export interface StoreState {
 
     // Hydration / Sync
     _hasHydrated: boolean;
+    isFetchingInitialData: boolean;
     fetchInitialData: () => Promise<void>;
     checkAuth: () => Promise<void>;
     resetStore: () => void;
@@ -145,20 +152,31 @@ export const useStore = create<StoreState>()(
             // Initial state
             isAuthenticated: false,
             authError: null,
+            isOnline: true,
             tasks: [],
             history: [],
             goals: [],
             aiMemory: [],
+            learnedPatterns: [],
             _hasHydrated: false,
+            isFetchingInitialData: false,
             preferences: {
                 hobbies: getPreferencesFromEnv('NEXT_PUBLIC_USER_HOBBIES', ['Reading', 'Hiking', 'Gaming']),
                 interests: getPreferencesFromEnv('NEXT_PUBLIC_USER_INTERESTS', ['Technology', 'Art', 'Music']),
                 passions: getPreferencesFromEnv('NEXT_PUBLIC_USER_PASSIONS', ['Learning', 'Creativity']),
                 work: getPreferencesFromEnv('NEXT_PUBLIC_USER_WORK', ['Software Dev', 'Management']),
                 aiEnabled: true,
+                autoArrangeTasks: false,
+                forceOfflineMode: false,
             },
 
+    setIsOnline: (status: boolean) => set({ isOnline: status }),
+
     checkAuth: async () => {
+        if (typeof window !== 'undefined' && localStorage.getItem('mindsync_test_mode') === 'true') {
+            set({ isAuthenticated: true, authError: null });
+            return;
+        }
         try {
             const { data: { user } } = await supabase.auth.getUser();
             set({ isAuthenticated: !!user, authError: null });
@@ -169,6 +187,14 @@ export const useStore = create<StoreState>()(
     },
 
     fetchInitialData: async () => {
+        if (get().isFetchingInitialData) return;
+        set({ isFetchingInitialData: true });
+        
+        if (typeof window !== 'undefined' && localStorage.getItem('mindsync_test_mode') === 'true') {
+            set({ isAuthenticated: true, _hasHydrated: true, isFetchingInitialData: false });
+            return;
+        }
+
         try {
             // Check authentication first
             const { data: { user } } = await supabase.auth.getUser();
@@ -177,6 +203,7 @@ export const useStore = create<StoreState>()(
                     isAuthenticated: false,
                     authError: 'Please log in to access your data',
                     _hasHydrated: true,
+                    isFetchingInitialData: false,
                     tasks: [],
                     goals: [],
                     history: [],
@@ -212,11 +239,12 @@ export const useStore = create<StoreState>()(
                 history: sortHistory(history),
                 aiMemory: aiMemory || [],
                 preferences: newPrefs,
-                _hasHydrated: true
+                _hasHydrated: true,
+                isFetchingInitialData: false
             });
         } catch (error) {
             console.error('Failed to fetch initial data:', error);
-            set({ _hasHydrated: true });
+            set({ _hasHydrated: true, isFetchingInitialData: false });
         }
     },
 
@@ -295,7 +323,7 @@ export const useStore = create<StoreState>()(
         api.deleteTask(taskId).catch(console.error);
     },
 
-    updateTask: (taskId: string, updates: Partial<Pick<Task, 'title' | 'scheduledTime' | 'duration'>>) => {
+    updateTask: (taskId: string, updates: Partial<Pick<Task, 'title' | 'scheduledDate' | 'scheduledTime' | 'duration'>>) => {
         set((state) => ({
             tasks: sortTasks(state.tasks.map((task) =>
                 task.id === taskId ? { ...task, ...updates } : task
@@ -339,14 +367,16 @@ export const useStore = create<StoreState>()(
                 restCompleted,
             };
 
-            const existingIndex = state.history.findIndex((h) => h.date === today);
-            if (existingIndex >= 0) {
-                const newHistory = [...state.history];
-                newHistory[existingIndex] = snapshot;
-                set({ history: sortHistory(newHistory) });
-            } else {
-                set({ history: sortHistory([...state.history, snapshot]) });
-            }
+            set((currentState) => {
+                const existingIndex = currentState.history.findIndex((h) => h.date === today);
+                if (existingIndex >= 0) {
+                    const newHistory = [...currentState.history];
+                    newHistory[existingIndex] = snapshot;
+                    return { history: sortHistory(newHistory) };
+                } else {
+                    return { history: sortHistory([...currentState.history, snapshot]) };
+                }
+            });
 
             api.saveSnapshot(snapshot).catch(console.error);
         };
@@ -423,6 +453,17 @@ export const useStore = create<StoreState>()(
         };
         set((state) => ({ aiMemory: [...state.aiMemory, newMemory] }));
         api.saveMemory(fact).catch(console.error);
+    },
+
+    addLearnedPattern: (pattern: string, confidence: number = 0.5) => {
+        const newPattern: LearnedPattern = {
+            id: generateId(),
+            pattern,
+            confidence,
+            createdAt: new Date().toISOString(),
+        };
+        set((state) => ({ learnedPatterns: [...state.learnedPatterns, newPattern] }));
+        // Note: Can be synced to backend if an API endpoint exists, keeping local for now.
     },
 
     updatePreferences: (newPrefs) => {

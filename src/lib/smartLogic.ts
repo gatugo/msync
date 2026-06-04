@@ -1,4 +1,4 @@
-import { DailySnapshot, Task, TaskType } from "@/types";
+import { DailySnapshot, Task, TaskType, LearnedPattern } from "@/types";
 import { parseNaturalDateTime } from "./datePatterns";
 
 /**
@@ -15,33 +15,43 @@ export const generateSmartInsight = (
     score: number,
     adultCount: number,
     childCount: number,
-    restCount: number
+    restCount: number,
+    learnedPatterns: LearnedPattern[] = []
 ): string => {
+    let baseInsight = "Stay balanced.";
+
     // 1. Check for extreme imbalances first
     if (adultCount > 0 && childCount === 0 && restCount === 0) {
-        return "You are in pure Adult mode. High risk of burnout. You MUST schedule something fun or restful immediately.";
-    }
-    if (childCount > 0 && adultCount === 0) {
-        return "You are in Child mode. While fun is good, avoiding responsibilities can lead to anxiety later. Try to tackle one small productive task.";
+        baseInsight = "You are in pure Adult mode. High risk of burnout. You MUST schedule something fun or restful immediately.";
+    } else if (childCount > 0 && adultCount === 0) {
+        baseInsight = "You are in Child mode. While fun is good, avoiding responsibilities can lead to anxiety later. Try to tackle one small productive task.";
+    } else {
+        // 2. Respond to calculated balance state
+        switch (balance) {
+            case 'anxiety':
+                baseInsight = `Your Adult/Child balance is skewed (${adultCount} vs ${childCount}). You are over-functioning, which feeds anxiety. Permission granted to stop working and rest.`;
+                break;
+            case 'depression':
+                baseInsight = `Your activity level is low. Action is the antidote to despair. "How can I earn it?" -> Set a small goal to earn a small reward.`;
+                break;
+            case 'optimal':
+                baseInsight = "Excellent balance! You are nurturing both your Adult (responsibility) and Child (creativity/rest) brains. Keep this rhythm.";
+                break;
+            case 'neutral':
+                if (score < 30) baseInsight = "You haven't tracked much today. Start by logging just one thing you did.";
+                else baseInsight = "A fresh start. remember: The goal isn't to be perfect, but to be balanced.";
+                break;
+        }
     }
 
-    // 2. Respond to calculated balance state
-    switch (balance) {
-        case 'anxiety':
-            return `Your Adult/Child balance is skewed (${adultCount} vs ${childCount}). You are over-functioning, which feeds anxiety. Permission granted to stop working and rest.`;
-        
-        case 'depression':
-            return `Your activity level is low. Action is the antidote to despair. "How can I earn it?" -> Set a small goal to earn a small reward.`;
-        
-        case 'optimal':
-            return "Excellent balance! You are nurturing both your Adult (responsibility) and Child (creativity/rest) brains. Keep this rhythm.";
-        
-        case 'neutral':
-            if (score < 30) return "You haven't tracked much today. Start by logging just one thing you did.";
-            return "A fresh start. remember: The goal isn't to be perfect, but to be balanced.";
+    if (learnedPatterns && learnedPatterns.length > 0) {
+        const bestPattern = [...learnedPatterns].sort((a, b) => b.confidence - a.confidence)[0];
+        if (bestPattern && bestPattern.confidence >= 0.5) {
+            baseInsight += `\n\n🧠 MindSync Learned Habit: ${bestPattern.pattern}`;
+        }
     }
-    
-    return "Stay balanced.";
+
+    return baseInsight;
 };
 
 // ==========================================

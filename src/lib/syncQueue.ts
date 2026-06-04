@@ -34,11 +34,15 @@ class SyncQueue {
     }
 
     private saveQueue() {
-        try {
-            localStorage.setItem(this.storageKey, JSON.stringify(this.queue));
-        } catch (e) {
-            console.error('Failed to save sync queue to localStorage, quota might be exceeded', e);
-        }
+        if (typeof window === 'undefined') return;
+        
+        Promise.resolve().then(() => {
+            try {
+                localStorage.setItem(this.storageKey, JSON.stringify(this.queue));
+            } catch (e) {
+                console.error('Failed to save sync queue to localStorage, quota might be exceeded', e);
+            }
+        });
     }
 
     async enqueue(item: Omit<QueueItem, 'id' | 'timestamp'>) {

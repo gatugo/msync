@@ -142,29 +142,28 @@ export default function TimelineView({
 
     // --- Data Preparation ---
     const filteredTasks = useMemo(() => {
-        const start = new Date(currentDate);
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(currentDate);
-        end.setHours(23, 59, 59, 999);
+        let startDate: Date;
+        let endDate: Date;
 
-        if (viewMode === 'week') {
+        if (viewMode === 'day') {
+            startDate = new Date(currentDate);
+            endDate = new Date(currentDate);
+        } else if (viewMode === 'week') {
             const days = getDaysInWeek(currentDate);
-            start.setTime(days[0].getTime());
-            end.setTime(days[6].getTime());
-            end.setHours(23, 59, 59, 999);
-        } else if (viewMode === 'month') {
-            start.setDate(1);
-            const nextMonth = new Date(start);
-            nextMonth.setMonth(start.getMonth() + 1);
-            end.setTime(nextMonth.getTime() - 1);
+            startDate = days[0];
+            endDate = days[6];
+        } else {
+            startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+            endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
         }
+
+        const startStr = formatDateKey(startDate);
+        const endStr = formatDateKey(endDate);
 
         return tasks.filter(t => {
             if (!t.scheduledDate) return false;
-            // Interpret YYYY-MM-DD as local midnight to align with "start" and "end" which are local dates
-            const tDate = new Date(t.scheduledDate + 'T00:00:00');
-            return tDate >= start && tDate <= end;
-        });
+            return t.scheduledDate >= startStr && t.scheduledDate <= endStr;
+        }).slice(0, 500); // Limit to 500 tasks per view
     }, [tasks, currentDate, viewMode]);
 
 

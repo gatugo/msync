@@ -243,27 +243,75 @@ export default function SettingsTab({ handleImport, handleExport, onScrollDirect
 
 
                         {/* Premium AI & Offline Toggle */}
-                        <div className="flex items-center justify-between p-5 bg-white/5 dark:bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-slate-200 dark:border-white/10 shadow-lg">
-                            <div className="flex items-center gap-4">
-                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-500 ${tempPrefs.aiEnabled ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-xl shadow-indigo-500/30 ring-2 ring-indigo-500/20' : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 ring-1 ring-slate-300 dark:ring-white/5'}`}>
-                                    <span className="material-icons-round text-2xl">{tempPrefs.aiEnabled ? 'smart_toy' : 'power_off'}</span>
+                        <div className="flex flex-col gap-3">
+                            <div className="flex items-center justify-between p-5 bg-white/5 dark:bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-slate-200 dark:border-white/10 shadow-lg">
+                                <div className="flex items-center gap-4">
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-500 ${tempPrefs.aiEnabled ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-xl shadow-indigo-500/30 ring-2 ring-indigo-500/20' : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 ring-1 ring-slate-300 dark:ring-white/5'}`}>
+                                        <span className="material-icons-round text-2xl">{tempPrefs.aiEnabled ? 'smart_toy' : 'power_off'}</span>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                            Enable AI Intelligence
+                                            {tempPrefs.aiEnabled && <span className="flex w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />}
+                                        </p>
+                                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                                            {tempPrefs.aiEnabled ? 'Using AI for advanced insight' : 'Using Local Smart Logic only'}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                        Enable AI Intelligence
-                                        {tempPrefs.aiEnabled && <span className="flex w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />}
-                                    </p>
-                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                                        {tempPrefs.aiEnabled ? 'Using AI for advanced insight' : 'Using Local Smart Logic only'}
-                                    </p>
-                                </div>
+                                <button
+                                    onClick={() => setTempPrefs(p => ({ ...p, aiEnabled: !p.aiEnabled }))}
+                                    className={`w-14 h-8 rounded-full transition-colors relative flex items-center px-1 shadow-inner shrink-0 ${tempPrefs.aiEnabled ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-700'}`}
+                                >
+                                    <div className={`w-6 h-6 rounded-full bg-white shadow-md transition-transform duration-300 ${tempPrefs.aiEnabled ? 'translate-x-6 scale-110' : 'translate-x-0'}`} />
+                                </button>
                             </div>
-                            <button
-                                onClick={() => setTempPrefs(p => ({ ...p, aiEnabled: !p.aiEnabled }))}
-                                className={`w-14 h-8 rounded-full transition-colors relative flex items-center px-1 shadow-inner ${tempPrefs.aiEnabled ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-700'}`}
-                            >
-                                <div className={`w-6 h-6 rounded-full bg-white shadow-md transition-transform duration-300 ${tempPrefs.aiEnabled ? 'translate-x-6 scale-110' : 'translate-x-0'}`} />
-                            </button>
+
+                            {/* Auto Arrange Toggle */}
+                            <div className={`flex items-center justify-between p-4 bg-white/5 dark:bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-slate-200 dark:border-white/5 transition-all ${tempPrefs.aiEnabled ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-indigo-500/10 text-indigo-400">
+                                        <span className="material-icons-round text-xl">auto_awesome_motion</span>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                            Auto-Arrange Tasks
+                                        </p>
+                                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                                            {tempPrefs.autoArrangeTasks ? 'AI will automatically adjust timeline' : 'AI only suggests changes (Requires confirmation)'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setTempPrefs(p => ({ ...p, autoArrangeTasks: !p.autoArrangeTasks }))}
+                                    className={`w-12 h-6 rounded-full transition-colors relative flex items-center px-1 shadow-inner shrink-0 ${tempPrefs.autoArrangeTasks ? 'bg-indigo-500' : 'bg-slate-300 dark:bg-slate-700'}`}
+                                >
+                                    <div className={`w-4 h-4 rounded-full bg-white shadow-md transition-transform duration-300 ${tempPrefs.autoArrangeTasks ? 'translate-x-6 scale-110' : 'translate-x-0'}`} />
+                                </button>
+                            </div>
+
+                            {/* Force Offline Toggle */}
+                            <div className="flex items-center justify-between p-4 bg-white/5 dark:bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-slate-200 dark:border-white/5 transition-all">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-amber-500/10 text-amber-500">
+                                        <span className="material-icons-round text-xl">wifi_off</span>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                            Force Offline Mode
+                                        </p>
+                                        <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                                            {tempPrefs.forceOfflineMode ? 'Always using Smart Logic' : 'Auto-switch based on connection'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setTempPrefs(p => ({ ...p, forceOfflineMode: !p.forceOfflineMode }))}
+                                    className={`w-12 h-6 rounded-full transition-colors relative flex items-center px-1 shadow-inner shrink-0 ${tempPrefs.forceOfflineMode ? 'bg-amber-500' : 'bg-slate-300 dark:bg-slate-700'}`}
+                                >
+                                    <div className={`w-4 h-4 rounded-full bg-white shadow-md transition-transform duration-300 ${tempPrefs.forceOfflineMode ? 'translate-x-6 scale-110' : 'translate-x-0'}`} />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Sleep Schedule */}

@@ -84,7 +84,8 @@ export const api = {
 
             const { error } = await supabase
                 .from('profiles')
-                .upsert({ id: userId, ...updates });
+                .update(updates)
+                .eq('id', userId);
 
             if (error) {
                 // Ignore schema cache errors (like missing columns in older local schemas)
@@ -101,69 +102,86 @@ export const api = {
         return withRetry(async () => {
             const userId = await requireAuth();
 
-            const { data, error } = await supabase.from('tasks').select('*').eq('user_id', userId);
+            const { data, error } = await supabase
+                .from('tasks')
+                .select('*')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false })
+                .limit(500);
             if (error) throw error;
             return data.map(mapTaskFromDB);
         });
     },
 
     createTask: async (task: Task) => {
-        const userId = await requireAuth();
-        const payload = {
-            id: task.id,
-            title: task.title,
-            type: task.type,
-            status: task.status,
-            scheduled_date: task.scheduledDate,
-            scheduled_time: task.scheduledTime,
-            duration: task.duration,
-            created_at: task.createdAt,
-            user_id: userId,
-        };
+        try {
+            const userId = await requireAuth();
+            const payload = {
+                id: task.id,
+                title: task.title,
+                type: task.type,
+                status: task.status,
+                scheduled_date: task.scheduledDate,
+                scheduled_time: task.scheduledTime,
+                duration: task.duration,
+                created_at: task.createdAt,
+                user_id: userId,
+            };
 
-        const { error } = await supabase.from('tasks').insert(payload);
-        if (error) {
-            console.warn('Network error, enqueuing task creation', error);
-            syncQueue.enqueue({ method: 'insert', table: 'tasks', payload });
+            const { error } = await supabase.from('tasks').insert(payload);
+            if (error) {
+                console.warn('Network error, enqueuing task creation', error);
+                syncQueue.enqueue({ method: 'insert', table: 'tasks', payload });
+            }
+        } catch (e) {
+            console.error('Error creating task:', e);
         }
     },
 
     updateTask: async (taskId: string, updates: Partial<Task>) => {
-        const userId = await requireAuth();
+        try {
+            const userId = await requireAuth();
 
-        // Map updates to snake_case
-        const dbUpdates: Record<string, any> = {};
-        if (updates.title) dbUpdates.title = updates.title;
-        if (updates.status) dbUpdates.status = updates.status;
-        if (updates.scheduledDate) dbUpdates.scheduled_date = updates.scheduledDate;
-        if (updates.scheduledTime) dbUpdates.scheduled_time = updates.scheduledTime;
-        if (updates.completedAt) dbUpdates.completed_at = updates.completedAt;
-        if (updates.duration !== undefined) dbUpdates.duration = updates.duration;
+            // Map updates to snake_case
+            const dbUpdates: Record<string, any> = {};
+            if (updates.title) dbUpdates.title = updates.title;
+            if (updates.status) dbUpdates.status = updates.status;
+            if (updates.scheduledDate) dbUpdates.scheduled_date = updates.scheduledDate;
+            if (updates.scheduledTime) dbUpdates.scheduled_time = updates.scheduledTime;
+            if (updates.completedAt) dbUpdates.completed_at = updates.completedAt;
+            if (updates.duration !== undefined) dbUpdates.duration = updates.duration;
 
-        const { error } = await supabase.from('tasks').update(dbUpdates).eq('id', taskId).eq('user_id', userId);
-        if (error) {
-            console.warn('Network error, enqueuing task update');
-            syncQueue.enqueue({
-                method: 'update',
-                table: 'tasks',
-                payload: dbUpdates,
-                filters: { id: taskId, user_id: userId }
-            });
+            const { error } = await supabase.from('tasks').update(dbUpdates).eq('id', taskId).eq('user_id', userId);
+            if (error) {
+                console.warn('Network error, enqueuing task update');
+                syncQueue.enqueue({
+                    method: 'update',
+                    table: 'tasks',
+                    payload: dbUpdates,
+                    filters: { id: taskId, user_id: userId }
+                });
+            }
+        } catch (e) {
+            console.error('Error updating task:', e);
         }
     },
 
     deleteTask: async (taskId: string) => {
-        const userId = await requireAuth();
+        try {
+            const userId = await requireAuth();
 
-        const { error } = await supabase.from('tasks').delete().eq('id', taskId).eq('user_id', userId);
-        if (error) {
-            console.warn('Network error, enqueuing task deletion');
-            syncQueue.enqueue({
-                method: 'delete',
-                table: 'tasks',
-                payload: {},
-                filters: { id: taskId, user_id: userId }
-            });
+            const { error } = await supabase.from('tasks').delete().eq('id', taskId).eq('user_id', userId);
+            if (error) {
+                console.warn('Network error, enqueuing task deletion');
+                syncQueue.enqueue({
+                    method: 'delete',
+                    table: 'tasks',
+                    payload: {},
+                    filters: { id: taskId, user_id: userId }
+                });
+            }
+        } catch (e) {
+            console.error('Error deleting task:', e);
         }
     },
 
@@ -179,57 +197,69 @@ export const api = {
     },
 
     createGoal: async (goal: Goal) => {
-        const userId = await requireAuth();
-        const payload = {
-            id: goal.id,
-            title: goal.title,
-            target_date: goal.targetDate,
-            start_time: goal.startTime,
-            completed: goal.completed,
-            created_at: goal.createdAt,
-            user_id: userId,
-        };
+        try {
+            const userId = await requireAuth();
+            const payload = {
+                id: goal.id,
+                title: goal.title,
+                target_date: goal.targetDate,
+                start_time: goal.startTime,
+                completed: goal.completed,
+                created_at: goal.createdAt,
+                user_id: userId,
+            };
 
-        const { error } = await supabase.from('goals').insert(payload);
-        if (error) {
-            console.warn('Network error, enqueuing goal creation');
-            syncQueue.enqueue({ method: 'insert', table: 'goals', payload });
+            const { error } = await supabase.from('goals').insert(payload);
+            if (error) {
+                console.warn('Network error, enqueuing goal creation');
+                syncQueue.enqueue({ method: 'insert', table: 'goals', payload });
+            }
+        } catch (e) {
+            console.error('Error creating goal:', e);
         }
     },
 
     updateGoal: async (goalId: string, updates: Partial<Goal>) => {
-        const userId = await requireAuth();
+        try {
+            const userId = await requireAuth();
 
-        const dbUpdates: Record<string, any> = {};
-        if (updates.title) dbUpdates.title = updates.title;
-        if (updates.targetDate) dbUpdates.target_date = updates.targetDate;
-        if (updates.startTime) dbUpdates.start_time = updates.startTime;
-        if (updates.completed !== undefined) dbUpdates.completed = updates.completed;
+            const dbUpdates: Record<string, any> = {};
+            if (updates.title) dbUpdates.title = updates.title;
+            if (updates.targetDate) dbUpdates.target_date = updates.targetDate;
+            if (updates.startTime) dbUpdates.start_time = updates.startTime;
+            if (updates.completed !== undefined) dbUpdates.completed = updates.completed;
 
-        const { error } = await supabase.from('goals').update(dbUpdates).eq('id', goalId).eq('user_id', userId);
-        if (error) {
-            console.warn('Network error, enqueuing goal update');
-            syncQueue.enqueue({
-                method: 'update',
-                table: 'goals',
-                payload: dbUpdates,
-                filters: { id: goalId, user_id: userId }
-            });
+            const { error } = await supabase.from('goals').update(dbUpdates).eq('id', goalId).eq('user_id', userId);
+            if (error) {
+                console.warn('Network error, enqueuing goal update');
+                syncQueue.enqueue({
+                    method: 'update',
+                    table: 'goals',
+                    payload: dbUpdates,
+                    filters: { id: goalId, user_id: userId }
+                });
+            }
+        } catch (e) {
+            console.error('Error updating goal:', e);
         }
     },
 
     deleteGoal: async (goalId: string) => {
-        const userId = await requireAuth();
+        try {
+            const userId = await requireAuth();
 
-        const { error } = await supabase.from('goals').delete().eq('id', goalId).eq('user_id', userId);
-        if (error) {
-            console.warn('Network error, enqueuing goal deletion');
-            syncQueue.enqueue({
-                method: 'delete',
-                table: 'goals',
-                payload: {},
-                filters: { id: goalId, user_id: userId }
-            });
+            const { error } = await supabase.from('goals').delete().eq('id', goalId).eq('user_id', userId);
+            if (error) {
+                console.warn('Network error, enqueuing goal deletion');
+                syncQueue.enqueue({
+                    method: 'delete',
+                    table: 'goals',
+                    payload: {},
+                    filters: { id: goalId, user_id: userId }
+                });
+            }
+        } catch (e) {
+            console.error('Error deleting goal:', e);
         }
     },
 
@@ -262,21 +292,25 @@ export const api = {
     },
 
     saveSnapshot: async (snapshot: DailySnapshot) => {
-        const userId = await requireAuth();
-        const payload = {
-            date: snapshot.date,
-            score: snapshot.score,
-            adult_completed: snapshot.adultCompleted,
-            child_completed: snapshot.childCompleted,
-            rest_completed: snapshot.restCompleted,
-            snapshot_data: snapshot.tasks,
-            user_id: userId,
-        };
+        try {
+            const userId = await requireAuth();
+            const payload = {
+                date: snapshot.date,
+                score: snapshot.score,
+                adult_completed: snapshot.adultCompleted,
+                child_completed: snapshot.childCompleted,
+                rest_completed: snapshot.restCompleted,
+                snapshot_data: snapshot.tasks,
+                user_id: userId,
+            };
 
-        const { error } = await supabase.from('daily_history').upsert(payload);
-        if (error) {
-            console.warn('Network error, enqueuing snapshot save');
-            syncQueue.enqueue({ method: 'upsert', table: 'daily_history', payload });
+            const { error } = await supabase.from('daily_history').upsert(payload);
+            if (error) {
+                console.warn('Network error, enqueuing snapshot save');
+                syncQueue.enqueue({ method: 'upsert', table: 'daily_history', payload });
+            }
+        } catch (e) {
+            console.error('Error saving snapshot:', e);
         }
     },
 

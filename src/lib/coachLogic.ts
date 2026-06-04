@@ -111,10 +111,15 @@ User Profile:${prefsStr}${memoryStr}`;
             const todayTasksList = tasks ? tasks.filter((t: Task) => t.scheduledDate === currentDateKey) : [];
             const tasksStr = todayTasksList.length > 0 ? `Today's Tasks (${currentDateKey}): ${todayTasksList.map((t: Task) => `${t.title} (${t.type}${t.scheduledTime ? ` at ${t.scheduledTime}` : ''})`).join(', ')}` : "No tasks scheduled for today.";
             const historySummary = (history || []).slice(-14).map((h: DailySnapshot) => `- ${h.date}: Score ${h.score}, Adult ${h.adultCompleted}, Child ${h.childCompleted}, Rest ${h.restCompleted || 0}`).join('\n');
+            
+            const sanitizedQuestion = question
+                ? question.replace(/<\/?(user_input|thought|think)[^>]*>/gi, '').trim()
+                : '';
+
             return `${commonContext}\n${tasksStr}\n${historySummary ? `\nPast 14 Days History:\n${historySummary}\n` : ''}${goals ? `Active Goals: ${goals.map((g: Goal) => `${g.title} (due ${g.targetDate})`).join(', ')}` : ''}${historyStr}
 
 <user_input>
-${question}
+${sanitizedQuestion}
 </user_input>
 Answer helpfully as the "Ego" coach using specific MindSync insights.
 Keep your response CONCISE, AUTHORITATIVE, and ACTIONABLE. Do not write long paragraphs or dense blocks of text. Use frequent line breaks and double newlines (\n\n) to keep each paragraph extremely short (maximum 1-2 sentences per paragraph). Structure your response with clear headings or bullet points for readability. IMPORTANT: When mentioning times in your conversation text, ALWAYS use 12-hour AM/PM format (e.g., "2:15 PM").

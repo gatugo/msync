@@ -4,6 +4,7 @@ import { useState, useEffect, useSyncExternalStore, useRef } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useStore } from '@/store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { TaskType, Task } from '@/types';
 import AddTaskPanel from '@/components/AddTaskPanel';
 import ProgressChart from '@/components/ProgressChart';
@@ -16,9 +17,8 @@ import BottomNav from '@/components/BottomNav';
 import AICoachScreen from '@/components/AICoachScreen';
 import SettingsTab from '@/components/SettingsTab';
 import ScoreGauge from '@/components/ScoreGauge';
-// ... (rest of imports)
-
-// ... inside page component ...
+import { motion, AnimatePresence } from 'framer-motion';
+import { Brain, Plus, Target } from 'lucide-react';
 
 
 function useHydration() {
@@ -68,7 +68,29 @@ export default function Home() {
     fetchInitialData,
     checkAuth,
     _hasHydrated,
-  } = useStore();
+  } = useStore(useShallow((state) => ({
+    tasks: state.tasks,
+    history: state.history,
+    goals: state.goals,
+    isAuthenticated: state.isAuthenticated,
+    authError: state.authError,
+    addTask: state.addTask,
+    updateTask: state.updateTask,
+    moveTask: state.moveTask,
+    deleteTask: state.deleteTask,
+    saveDailySnapshot: state.saveDailySnapshot,
+    addGoal: state.addGoal,
+    editGoal: state.editGoal,
+    toggleGoal: state.toggleGoal,
+    deleteGoal: state.deleteGoal,
+    getDailyScore: state.getDailyScore,
+    getTasksByStatus: state.getTasksByStatus,
+    exportData: state.exportData,
+    importData: state.importData,
+    fetchInitialData: state.fetchInitialData,
+    checkAuth: state.checkAuth,
+    _hasHydrated: state._hasHydrated,
+  })));
 
   // Hydration / Data Fetching
   useEffect(() => {
@@ -185,7 +207,7 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
         <div className="text-slate-400 flex items-center gap-2">
-          <span className="material-icons-round animate-pulse">psychology</span>
+          <Brain className="w-5 h-5 animate-pulse text-indigo-400" />
           Loading...
         </div>
       </div>
@@ -199,7 +221,7 @@ export default function Home() {
         <div className="max-w-md w-full space-y-6">
           <div className="text-center">
             <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-indigo-500 via-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
-              <span className="material-icons-round text-4xl">psychology</span>
+              <Brain className="w-10 h-10 text-white" />
             </div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 text-transparent bg-clip-text mb-2">
               MindSync
@@ -313,7 +335,7 @@ export default function Home() {
                   }`}
                 title={showGoals ? "Hide Goals" : "Show Goals"}
               >
-                <span className={`material-icons-round text-lg sm:text-xl transition-colors ${showGoals ? 'text-amber-400' : 'text-slate-400 group-hover:text-slate-600 dark:group-hover:text-white'}`}>flag</span>
+                <Target className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors ${showGoals ? 'text-amber-400' : 'text-slate-400 group-hover:text-slate-600 dark:group-hover:text-white'}`} />
                 <span className="hidden lg:inline text-xs sm:text-sm font-semibold tracking-wide">{showGoals ? 'Hide' : 'Goals'}</span>
               </button>
 
@@ -325,7 +347,7 @@ export default function Home() {
                   : 'bg-gradient-to-b from-indigo-500 to-indigo-600 border-indigo-400/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.3),0_4px_14px_rgba(99,102,241,0.4)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.4),0_6px_20px_rgba(99,102,241,0.5)] hover:-translate-y-0.5 text-white'
                   }`}
               >
-                <span className={`material-icons-round text-lg sm:text-xl transition-transform ${isAddTaskOpen ? 'rotate-45' : ''}`}>add</span>
+                <Plus className={`w-4 h-4 sm:w-5 sm:h-5 transition-transform ${isAddTaskOpen ? 'rotate-45' : ''}`} />
                 <span className="hidden sm:inline whitespace-nowrap text-xs sm:text-sm tracking-wide">New Task</span>
               </button>
 
@@ -344,78 +366,108 @@ export default function Home() {
       }`}>
         {/* Main Content Area */}
         <div className="flex-1 overflow-hidden relative">
-          {activeTab === 'today' && (
-            <div className="h-full flex flex-col overflow-hidden pb-4">
-              <div className="flex-1 min-h-0 mt-4">
-                <TimelineView
+          <AnimatePresence mode="wait">
+            {activeTab === 'today' && (
+              <motion.div
+                key="today"
+                initial={{ opacity: 0, x: 15 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -15 }}
+                transition={{ duration: 0.15, ease: 'easeInOut' }}
+                className="h-full flex flex-col overflow-hidden pb-4"
+              >
+                <div className="flex-1 min-h-0 mt-4">
+                  <TimelineView
+                    tasks={tasks}
+                    onMoveTask={moveTask}
+                    onDeleteTask={deleteTask}
+                    onUpdateTask={updateTask}
+                    onAddTask={addTask}
+                    onEditTask={setEditingTask}
+                    onRequestCreateTask={(date, time) => setCreatingTaskSlot({ date, time })}
+                    onScrollDirectionChange={setIsNavbarHidden}
+                  />
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'stats' && (
+              <motion.div
+                key="stats"
+                initial={{ opacity: 0, x: 15 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -15 }}
+                transition={{ duration: 0.15, ease: 'easeInOut' }}
+                onScroll={(e) => {
+                  const scrollTop = e.currentTarget.scrollTop;
+                  const maxScroll = e.currentTarget.scrollHeight - e.currentTarget.clientHeight;
+                  
+                  // Guard: If the previous scroll position is greater than the current maxScroll,
+                  // it means the container resized and clamped the scroll position downward.
+                  // This is an automatic layout adjustment, NOT a user scroll action.
+                  if (lastScrollTopStatsRef.current > maxScroll) {
+                    lastScrollTopStatsRef.current = scrollTop;
+                    return;
+                  }
+
+                  if (Math.abs(scrollTop - lastScrollTopStatsRef.current) < 10) return;
+                  if (scrollTop > lastScrollTopStatsRef.current && scrollTop > 60) {
+                    setIsNavbarHidden(true);
+                  } else if (scrollTop < lastScrollTopStatsRef.current) {
+                    if (scrollTop < maxScroll - 10) {
+                      setIsNavbarHidden(false);
+                    }
+                  }
+                  lastScrollTopStatsRef.current = scrollTop;
+                }}
+                className="h-full overflow-y-auto px-4 sm:px-6 custom-scrollbar scroll-smooth"
+              >
+                <div className="max-w-3xl mx-auto w-full pb-20 sm:pb-24 pt-2">
+                  <ProgressChart history={history} />
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'coach' && (
+              <motion.div
+                key="coach"
+                initial={{ opacity: 0, x: 15 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -15 }}
+                transition={{ duration: 0.15, ease: 'easeInOut' }}
+                className="h-full"
+              >
+                <AICoachScreen
                   tasks={tasks}
-                  onMoveTask={moveTask}
-                  onDeleteTask={deleteTask}
-                  onUpdateTask={updateTask}
-                  onAddTask={addTask}
+                  score={score}
+                  balance={balance}
+                  history={history}
+                  goals={goals}
+                  initialMode={activeTab === 'coach' ? activeCoachMode : 'advice'}
+                  initialQuestion={initialCoachQuestion}
+                  onClose={() => { setActiveTab('today'); setInitialCoachQuestion(''); }}
                   onEditTask={setEditingTask}
-                  onRequestCreateTask={(date, time) => setCreatingTaskSlot({ date, time })}
+                />
+              </motion.div>
+            )}
+
+            {activeTab === 'settings' && (
+              <motion.div
+                key="settings"
+                initial={{ opacity: 0, x: 15 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -15 }}
+                transition={{ duration: 0.15, ease: 'easeInOut' }}
+                className="h-full"
+              >
+                <SettingsTab
+                  handleImport={handleImport}
+                  handleExport={handleExport}
                   onScrollDirectionChange={setIsNavbarHidden}
                 />
-              </div>
-            </div>
-          )}
-
-
-
-          {activeTab === 'stats' && (
-            <div 
-              onScroll={(e) => {
-                const scrollTop = e.currentTarget.scrollTop;
-                const maxScroll = e.currentTarget.scrollHeight - e.currentTarget.clientHeight;
-                
-                // Guard: If the previous scroll position is greater than the current maxScroll,
-                // it means the container resized and clamped the scroll position downward.
-                // This is an automatic layout adjustment, NOT a user scroll action.
-                if (lastScrollTopStatsRef.current > maxScroll) {
-                  lastScrollTopStatsRef.current = scrollTop;
-                  return;
-                }
-
-                if (Math.abs(scrollTop - lastScrollTopStatsRef.current) < 10) return;
-                if (scrollTop > lastScrollTopStatsRef.current && scrollTop > 60) {
-                  setIsNavbarHidden(true);
-                } else if (scrollTop < lastScrollTopStatsRef.current) {
-                  if (scrollTop < maxScroll - 10) {
-                    setIsNavbarHidden(false);
-                  }
-                }
-                lastScrollTopStatsRef.current = scrollTop;
-              }}
-              className="h-full overflow-y-auto px-4 sm:px-6 custom-scrollbar scroll-smooth"
-            >
-              <div className="max-w-3xl mx-auto w-full pb-20 sm:pb-24 pt-2">
-                <ProgressChart history={history} />
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'coach' && (
-            <AICoachScreen
-              tasks={tasks}
-              score={score}
-              balance={balance}
-              history={history}
-              goals={goals}
-              initialMode={activeTab === 'coach' ? activeCoachMode : 'advice'}
-              initialQuestion={initialCoachQuestion}
-              onClose={() => { setActiveTab('today'); setInitialCoachQuestion(''); }}
-              onEditTask={setEditingTask}
-            />
-          )}
-
-          {activeTab === 'settings' && (
-            <SettingsTab
-              handleImport={handleImport}
-              handleExport={handleExport}
-              onScrollDirectionChange={setIsNavbarHidden}
-            />
-          )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </main>
 
@@ -436,7 +488,7 @@ export default function Home() {
           }`}
           title="Create New Task"
         >
-          <span className="material-icons-round text-[28px] font-black drop-shadow-sm">add</span>
+          <Plus className="w-7 h-7 drop-shadow-sm" />
         </button>
       )}
 
@@ -478,25 +530,33 @@ export default function Home() {
         onDelete={() => {}} // Not used in create mode
       />
 
-      {showGoals && (
-        <>
-          <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-[100] animate-in fade-in duration-300" onClick={() => setShowGoals(false)} />
-          <GoalsPanel
-            goals={goals}
-            onAddGoal={addGoal}
-            onEditGoal={editGoal}
-            onToggleGoal={toggleGoal}
-            onDeleteGoal={deleteGoal}
-            onBreakdown={(goal) => {
-              setShowGoals(false);
-              setActiveCoachMode('chat');
-              setInitialCoachQuestion(`Please break down my goal '${goal.title}' into 3-4 smaller, manageable tasks spread across the next few days. Please use the ACTION: CREATE_TASK format for each.`);
-              setActiveTab('coach');
-            }}
-            onClose={() => setShowGoals(false)}
-          />
-        </>
-      )}
+      <AnimatePresence>
+        {showGoals && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-[100]" 
+              onClick={() => setShowGoals(false)} 
+            />
+            <GoalsPanel
+              goals={goals}
+              onAddGoal={addGoal}
+              onEditGoal={editGoal}
+              onToggleGoal={toggleGoal}
+              onDeleteGoal={deleteGoal}
+              onBreakdown={(goal) => {
+                setShowGoals(false);
+                setActiveCoachMode('chat');
+                setInitialCoachQuestion(`Please break down my goal '${goal.title}' into 3-4 smaller, manageable tasks spread across the next few days. Please use the ACTION: CREATE_TASK format for each.`);
+                setActiveTab('coach');
+              }}
+              onClose={() => setShowGoals(false)}
+            />
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

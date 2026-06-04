@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Task, TaskType } from '@/types';
+import { MoreHorizontal, ArrowLeft, ArrowRight, Edit2, Trash2 } from 'lucide-react';
 
 interface TaskCardProps {
     task: Task;
@@ -76,7 +77,7 @@ export default function TaskCard({
                 <div className="flex items-center gap-2">
                     {/* Mobile "More" Indicator - visible only on small screens when not expanded */}
                     <span className={`sm:hidden text-slate-600 transition-opacity ${isExpanded ? 'opacity-0' : 'opacity-100'}`}>
-                        <span className="material-icons-round text-base">more_horiz</span>
+                        <MoreHorizontal className="w-4 h-4" />
                     </span>
 
                     {(task.scheduledDate || task.scheduledTime) && (
@@ -107,7 +108,7 @@ export default function TaskCard({
                         className="p-1.5 bg-slate-800 rounded-lg text-slate-500 hover:text-[#5c67ff] transition-colors"
                         title="Move back"
                     >
-                        <span className="material-icons-round text-sm">arrow_back</span>
+                        <ArrowLeft className="w-4 h-4" />
                     </button>
                 )}
 
@@ -117,7 +118,7 @@ export default function TaskCard({
                         className="p-1.5 bg-slate-800 rounded-lg text-slate-500 hover:text-[#5c67ff] transition-colors"
                         title="Move forward"
                     >
-                        <span className="material-icons-round text-sm">arrow_forward</span>
+                        <ArrowRight className="w-4 h-4" />
                     </button>
                 )}
 
@@ -126,7 +127,7 @@ export default function TaskCard({
                     className="p-1.5 bg-slate-800 rounded-lg text-slate-500 hover:text-[#5c67ff] transition-colors"
                     title="Edit task"
                 >
-                    <span className="material-icons-round text-sm">edit</span>
+                    <Edit2 className="w-4 h-4" />
                 </button>
 
                 <button
@@ -134,7 +135,7 @@ export default function TaskCard({
                     className="p-1.5 bg-slate-800 rounded-lg text-slate-500 hover:text-red-500 transition-colors"
                     title="Delete task"
                 >
-                    <span className="material-icons-round text-sm">delete</span>
+                    <Trash2 className="w-4 h-4" />
                 </button>
             </div>
         </div>

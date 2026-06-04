@@ -1,6 +1,6 @@
 import { Task, TaskType } from '@/types';
 import { useMemo, useState, useEffect, useRef } from 'react';
-import { Check, Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, LayoutList, Grid } from 'lucide-react';
+import { Check, Plus, ChevronLeft, ChevronRight, Calendar as CalendarIcon, LayoutList, Grid, Brain, Sparkles, Coffee } from 'lucide-react';
 import { format12h } from '@/lib/datePatterns';
 
 interface TimelineViewProps {
@@ -14,10 +14,10 @@ interface TimelineViewProps {
     onScrollDirectionChange?: (isScrollingDown: boolean) => void;
 }
 
-const typeConfig: Record<TaskType, { emoji: string; bg: string; border: string; label: string }> = {
-    ADULT: { emoji: '🔵', bg: 'bg-blue-500/20', border: 'border-blue-500/50', label: 'Adult' },
-    CHILD: { emoji: '🩷', bg: 'bg-pink-500/20', border: 'border-pink-500/50', label: 'Child' },
-    REST: { emoji: '🟢', bg: 'bg-green-500/20', border: 'border-green-500/50', label: 'Rest' },
+const typeConfig: Record<TaskType, { icon: React.ComponentType<{ className?: string }>; iconColor: string; bg: string; border: string; label: string }> = {
+    ADULT: { icon: Brain, iconColor: 'text-blue-400', bg: 'bg-blue-500/20', border: 'border-blue-500/50', label: 'Adult' },
+    CHILD: { icon: Sparkles, iconColor: 'text-pink-400', bg: 'bg-pink-500/20', border: 'border-pink-500/50', label: 'Child' },
+    REST: { icon: Coffee, iconColor: 'text-emerald-400', bg: 'bg-green-500/20 border-emerald-500/50', border: 'border-emerald-500/50', label: 'Rest' },
 };
 
 const typeClasses: Record<TaskType, string> = {
@@ -50,9 +50,16 @@ export default function TimelineView({
     const lastScrollTopRef = useRef<number>(0);
     const isProgrammaticScrollRef = useRef<boolean>(false);
     const isInitialLoadingRef = useRef<boolean>(false);
+    const lastScrollTimeRef = useRef<number>(0);
 
     const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
         if (!onScrollDirectionChange) return;
+        
+        const now = Date.now();
+        // Throttle checks to once every 80ms to avoid clogging the React render queue during fast scrolls
+        if (now - lastScrollTimeRef.current < 80) return;
+        lastScrollTimeRef.current = now;
+
         const scrollTop = e.currentTarget.scrollTop;
         
         // Skip handling scroll events if they are triggered programmatically (e.g. on auto-scroll) or during initial load
@@ -436,8 +443,12 @@ export default function TimelineView({
                                                 {/* Task Content */}
                                                 <div className="flex-1 cursor-pointer" onClick={() => onEditTask(task)}>
                                                     <div className="flex items-center justify-between gap-1 w-full">
-                                                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${typeConfig[task.type].bg} ${typeConfig[task.type].border} text-white/90 truncate max-w-[70%]`}>
-                                                            {typeConfig[task.type].emoji} {typeConfig[task.type].label}
+                                                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${typeConfig[task.type].bg} ${typeConfig[task.type].border} text-white/90 truncate max-w-[70%] inline-flex items-center gap-1`}>
+                                                            {(() => {
+                                                                const Icon = typeConfig[task.type].icon;
+                                                                return <Icon className={`w-3 h-3 shrink-0 ${typeConfig[task.type].iconColor}`} />;
+                                                            })()}
+                                                            <span>{typeConfig[task.type].label}</span>
                                                         </span>
                                                         <span className="text-[10px] text-white/40 font-mono tracking-tight shrink-0 whitespace-nowrap">
                                                             {task.scheduledTime ? format12h(task.scheduledTime) : ''}
@@ -488,7 +499,13 @@ export default function TimelineView({
                                                 className={`p-1.5 rounded text-[10px] border truncate text-white/90 shadow-sm ${typeConfig[task.type].bg} ${typeConfig[task.type].border}`}
                                                 onClick={(e) => { e.stopPropagation(); onEditTask(task); }}
                                             >
-                                                {typeConfig[task.type].emoji} {task.title}
+                                                <div className="flex items-center gap-1 truncate">
+                                                    {(() => {
+                                                        const Icon = typeConfig[task.type].icon;
+                                                        return <Icon className={`w-3 h-3 shrink-0 ${typeConfig[task.type].iconColor}`} />;
+                                                    })()}
+                                                    <span className="truncate">{task.title}</span>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>

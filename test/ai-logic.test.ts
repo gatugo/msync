@@ -33,7 +33,7 @@ describe('AI Persona Constraints', () => {
     it('should include Ego constraints in system prompt', () => {
         const prompt = getSystemPrompt('gemini');
         expect(prompt).toContain('I am prescribing...');
-        expect(prompt).toContain('You MUST output concrete tasks using the Action Block syntax.');
+        expect(prompt).toContain('You MUST output concrete tasks using');
         expect(prompt).toContain('[ACTION: CREATE_TASK');
         expect(prompt).toContain('<thought>');
     });

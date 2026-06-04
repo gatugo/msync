@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Plus, X, ChevronDown, Bot, Loader2, Sparkles } from 'lucide-react';
+import { Plus, X, ChevronDown, Bot, Loader2, Sparkles, Brain, Coffee } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { supabase } from '@/lib/supabase';
 import { TaskType } from '@/types';
@@ -17,10 +17,10 @@ interface AddTaskPanelProps {
     onAdd: (title: string, type: TaskType, date?: string, time?: string, duration?: number) => void;
 }
 
-const typeConfig: Record<TaskType, { emoji: string; label: string; color: string }> = {
-    ADULT: { emoji: '🔵', label: 'Adult', color: 'bg-blue-500' },
-    CHILD: { emoji: '🩷', label: 'Child', color: 'bg-pink-500' },
-    REST: { emoji: '🟢', label: 'Rest', color: 'bg-green-500' },
+const typeConfig: Record<TaskType, { icon: React.ComponentType<{ className?: string }>; iconColor: string; label: string; color: string }> = {
+    ADULT: { icon: Brain, iconColor: 'text-blue-400', label: 'Adult', color: 'bg-blue-500' },
+    CHILD: { icon: Sparkles, iconColor: 'text-pink-400', label: 'Child', color: 'bg-pink-500' },
+    REST: { icon: Coffee, iconColor: 'text-emerald-400', label: 'Rest', color: 'bg-green-500' },
 };
 
 const getLocalDateString = (d: Date = new Date()) => {
@@ -289,7 +289,12 @@ export default function AddTaskPanel({ isOpen, onClose, onAdd }: AddTaskPanelPro
                                         onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
                                         className="flex items-center gap-2 bg-slate-800/80 hover:bg-slate-800 border border-white/5 hover:border-white/10 rounded-xl px-3 py-2 sm:px-4 sm:py-2.5 text-sm text-white/90 transition-all font-medium"
                                     >
-                                        <span>{typeConfig[type].emoji}</span>
+                                        <span className="flex items-center shrink-0">
+                                            {(() => {
+                                                const Icon = typeConfig[type].icon;
+                                                return <Icon className={`w-4 h-4 ${typeConfig[type].iconColor}`} />;
+                                            })()}
+                                        </span>
                                         <span>{typeConfig[type].label}</span>
                                         <ChevronDown className="w-3 h-3 text-white/50" />
                                     </button>
@@ -318,7 +323,12 @@ export default function AddTaskPanel({ isOpen, onClose, onAdd }: AddTaskPanelPro
                                                         }}
                                                         className={`w-full flex items-center gap-3 px-3 py-2.5 text-left rounded-lg text-sm transition-colors ${type === t ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'}`}
                                                     >
-                                                        <span>{typeConfig[t].emoji}</span>
+                                                        <span className="flex items-center shrink-0">
+                                                            {(() => {
+                                                                const Icon = typeConfig[t].icon;
+                                                                return <Icon className={`w-4 h-4 ${typeConfig[t].iconColor}`} />;
+                                                            })()}
+                                                        </span>
                                                         <span className="font-medium">{typeConfig[t].label}</span>
                                                     </button>
                                                 ))}

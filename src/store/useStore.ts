@@ -214,13 +214,26 @@ export const useStore = create<StoreState>()(
 
             set({ isAuthenticated: true, authError: null });
 
-            // Fetch all data in parallel
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('mindsync-user-id', user.id);
+            }
+
+            // Fetch all data in parallel using Promise.allSettled/fetchOrFallback for resilience
+            const fetchOrFallback = async <T>(promise: Promise<T>, fallback: T, name: string): Promise<T> => {
+                try {
+                    return await promise;
+                } catch (error) {
+                    console.error(`[Hydration Warning] Failed to fetch ${name}:`, error);
+                    return fallback;
+                }
+            };
+
             const [tasks, goals, profile, history, aiMemory] = await Promise.all([
-                api.fetchTasks(),
-                api.fetchGoals(),
-                api.fetchProfile(),
-                api.fetchHistory(),
-                api.fetchMemories()
+                fetchOrFallback(api.fetchTasks(), [], 'tasks'),
+                fetchOrFallback(api.fetchGoals(), [], 'goals'),
+                fetchOrFallback(api.fetchProfile(), null, 'profile'),
+                fetchOrFallback(api.fetchHistory(), [], 'history'),
+                fetchOrFallback(api.fetchMemories(), [], 'memories')
             ]);
 
             const newPrefs = { ...get().preferences };
@@ -233,9 +246,53 @@ export const useStore = create<StoreState>()(
                 if (profile.sleep_end_time) newPrefs.sleepEndTime = profile.sleep_end_time;
             }
 
+            // Perform state reconciliation / offline-merge to avoid overwriting pending edits
+            const pendingQueueStr = typeof window !== 'undefined' ? localStorage.getItem('mindsync-sync-queue') : null;
+            let mergedTasks = tasks;
+            let mergedGoals = goals;
+
+            if (pendingQueueStr) {
+                try {
+                    const pendingQueue = JSON.parse(pendingQueueStr);
+                    if (Array.isArray(pendingQueue) && pendingQueue.length > 0) {
+                        // Reconcile tasks
+                        const pendingTaskIds = new Set<string>(
+                            pendingQueue
+                                .filter((item: any) => item.table === 'tasks')
+                                .map((item: any) => item.filters?.id || item.payload?.id)
+                                .filter(Boolean)
+                        );
+                        if (pendingTaskIds.size > 0) {
+                            const localTasks = get().tasks;
+                            mergedTasks = [
+                                ...localTasks.filter(t => pendingTaskIds.has(t.id)),
+                                ...tasks.filter(t => !pendingTaskIds.has(t.id))
+                            ];
+                        }
+
+                        // Reconcile goals
+                        const pendingGoalIds = new Set<string>(
+                            pendingQueue
+                                .filter((item: any) => item.table === 'goals')
+                                .map((item: any) => item.filters?.id || item.payload?.id)
+                                .filter(Boolean)
+                        );
+                        if (pendingGoalIds.size > 0) {
+                            const localGoals = get().goals;
+                            mergedGoals = [
+                                ...localGoals.filter(g => pendingGoalIds.has(g.id)),
+                                ...goals.filter(g => !pendingGoalIds.has(g.id))
+                            ];
+                        }
+                    }
+                } catch (e) {
+                    console.error('Failed to reconcile offline tasks/goals:', e);
+                }
+            }
+
             set({
-                tasks: sortTasks(tasks),
-                goals: sortGoals(goals),
+                tasks: sortTasks(mergedTasks),
+                goals: sortGoals(mergedGoals),
                 history: sortHistory(history),
                 aiMemory: aiMemory || [],
                 preferences: newPrefs,

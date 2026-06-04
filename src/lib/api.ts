@@ -5,11 +5,35 @@ import { syncQueue } from './syncQueue';
 
 // ============ SECURITY: Auth Guard Helper ============
 async function requireAuth(): Promise<string> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        throw new Error('Unauthorized - User not authenticated');
+    try {
+        // 1. Try session (offline resilient)
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.id) {
+            return session.user.id;
+        }
+    } catch (e) {
+        console.warn('Failed to get session:', e);
     }
-    return user.id;
+
+    try {
+        // 2. Try getUser (server verification)
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.id) {
+            return user.id;
+        }
+    } catch (e) {
+        console.warn('Failed to get user:', e);
+    }
+
+    // 3. Fallback to localStorage cached ID (last resort for offline sync)
+    if (typeof window !== 'undefined') {
+        const cachedId = localStorage.getItem('mindsync-user-id');
+        if (cachedId) {
+            return cachedId;
+        }
+    }
+
+    throw new Error('Unauthorized - User not authenticated');
 }
 
 // --- Retry Helper ---

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useSyncExternalStore } from 'react';
-import { X } from 'lucide-react';
+import { X, Sparkles } from 'lucide-react';
 import {
     ComposedChart,
     Bar,
@@ -22,6 +22,85 @@ interface ProgressChartProps {
 type TimeRange = '7days' | '30days';
 
 // Custom hook for hydration check
+const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+        const data = payload[0].payload;
+        const adult = data.adult;
+        const child = data.child;
+        const rest = data.rest;
+        const score = data.score;
+        const total = adult + child + rest;
+        const balanceRatio = total > 0 ? {
+            adult: Math.round((adult / total) * 100),
+            child: Math.round((child / total) * 100),
+            rest: Math.round((rest / total) * 100),
+        } : { adult: 0, child: 0, rest: 0 };
+
+        let statusText = 'Balanced';
+        let statusColor = 'text-green-400';
+        if (total > 0) {
+            if (balanceRatio.adult > 60) {
+                statusText = 'Adult Heavy';
+                statusColor = 'text-blue-400';
+            } else if (balanceRatio.child > 50) {
+                statusText = 'Play Heavy';
+                statusColor = 'text-pink-400';
+            } else if (balanceRatio.rest > 50) {
+                statusText = 'Rest Heavy';
+                statusColor = 'text-emerald-400';
+            }
+        } else {
+            statusText = 'No Tasks';
+            statusColor = 'text-slate-400';
+        }
+
+        return (
+            <div className="glass-panel backdrop-blur-2xl rounded-2xl border border-white/10 p-4 shadow-[0_15px_30px_rgba(0,0,0,0.6)] min-w-[210px] animate-in fade-in zoom-in-95 duration-100">
+                <div className="flex justify-between items-center border-b border-white/5 pb-2 mb-2.5">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">{data.displayDate}</span>
+                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-white/5 ${statusColor}`}>
+                        {statusText}
+                    </span>
+                </div>
+                
+                <div className="flex items-center justify-between mb-3 bg-white/[0.03] rounded-xl px-2.5 py-2 border border-white/5">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Ego Score</span>
+                    <span className="text-xs font-black text-amber-400 flex items-center gap-1">
+                        ✨ {score}
+                    </span>
+                </div>
+
+                <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2 text-blue-300 font-medium">
+                            <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 shadow-md shadow-blue-500/50" />
+                            <span>Adult Focus</span>
+                        </div>
+                        <span className="font-semibold text-slate-200">{adult} <span className="text-[10px] text-slate-400">({balanceRatio.adult}%)</span></span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2 text-pink-300 font-medium">
+                            <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-tr from-pink-500 to-purple-600 shadow-md shadow-pink-500/50" />
+                            <span>Child Joy</span>
+                        </div>
+                        <span className="font-semibold text-slate-200">{child} <span className="text-[10px] text-slate-400">({balanceRatio.child}%)</span></span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2 text-emerald-300 font-medium">
+                            <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-tr from-emerald-400 to-green-600 shadow-md shadow-emerald-500/50" />
+                            <span>Rest Break</span>
+                        </div>
+                        <span className="font-semibold text-slate-200">{rest} <span className="text-[10px] text-slate-400">({balanceRatio.rest}%)</span></span>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+    return null;
+};
+
 function useHydration() {
     return useSyncExternalStore(
         () => () => { },
@@ -38,7 +117,8 @@ export default function ProgressChart({ history }: ProgressChartProps) {
     const now = new Date();
     const daysToShow = timeRange === '7days' ? 7 : 30;
     const cutoffDate = new Date(now);
-    cutoffDate.setDate(cutoffDate.getDate() - daysToShow);
+    const dateCopy = new Date(now);
+    cutoffDate.setDate(dateCopy.getDate() - daysToShow);
 
     const filteredHistory = history
         .filter((snapshot) => new Date(snapshot.date) >= cutoffDate)
@@ -78,127 +158,83 @@ export default function ProgressChart({ history }: ProgressChartProps) {
         return (
             <div className="bg-slate-800/50 backdrop-blur rounded-xl p-6">
                 <div className="h-64 flex items-center justify-center text-white/40">
-                    Loading chart...
+                    Loading stats...
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="bg-slate-900/40 backdrop-blur-2xl rounded-2xl p-4 sm:p-5 relative border border-white/5 shadow-[0_0_40px_-15px_rgba(99,102,241,0.2)] animate-in fade-in zoom-in-95 duration-500">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/20">
-                        <span className="material-icons-round text-white text-lg">insights</span>
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-bold text-white tracking-tight">Daily Balance</h3>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Progress Overview</p>
-                    </div>
+        <div className="w-full h-full min-h-[300px]">
+            <div className="flex justify-between items-center mb-4">
+                <div>
+                    <h3 className="text-sm font-black uppercase tracking-widest text-white/90">Ego Balance Dynamics</h3>
+                    <p className="text-[10px] text-white/40 font-bold uppercase tracking-wider mt-0.5">7-day vs 30-day task completion history</p>
                 </div>
-                <div className="flex bg-slate-800/50 p-1 rounded-xl border border-white/5">
+                <div className="flex bg-slate-900 border border-white/5 p-1 rounded-xl">
                     <button
                         onClick={() => setTimeRange('7days')}
-                        className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${timeRange === '7days'
-                            ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30'
-                            : 'text-slate-400 hover:text-white'
-                            }`}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${timeRange === '7days' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
                     >
                         7 Days
                     </button>
                     <button
                         onClick={() => setTimeRange('30days')}
-                        className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${timeRange === '30days'
-                            ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/30'
-                            : 'text-slate-400 hover:text-white'
-                            }`}
+                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${timeRange === '30days' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
                     >
                         30 Days
                     </button>
                 </div>
             </div>
 
-            {/* Chart Area */}
-            {chartData.every((d) => d.adult === 0 && d.child === 0 && d.rest === 0) ? (
-                <div className="h-48 md:h-[240px] flex flex-col items-center justify-center text-center p-6 relative animate-in fade-in duration-700">
-                    {/* Glowing background blur */}
-                    <div className="absolute inset-0 bg-amber-500/5 blur-3xl rounded-full scale-75 pointer-events-none" />
-                    
-                    <div className="relative mb-4">
-                        <div className="w-16 h-14 rounded-2xl bg-gradient-to-br from-amber-400/10 to-orange-500/10 flex items-center justify-center border border-amber-500/20 text-amber-500 shadow-lg shadow-amber-500/5 animate-pulse">
-                            <span className="material-icons-round text-3xl">analytics</span>
-                        </div>
-                    </div>
-                    <h4 className="text-base font-bold text-white mb-1.5 tracking-tight">Sync History is Quiet</h4>
-                    <p className="text-xs text-slate-400 max-w-[280px] leading-relaxed">
-                        Complete your scheduled tasks today to start plotting your three-brain balance charts and energy tracking.
-                    </p>
-                </div>
-            ) : (
-                <div className="h-[210px] sm:h-[250px] md:h-[280px] lg:h-[300px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={chartData} margin={{ top: 10, right: -10, left: -20, bottom: 0 }}>
-                            <defs>
-                                <linearGradient id="colorAdult" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.9} />
-                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.6} />
-                                </linearGradient>
-                                <linearGradient id="colorChild" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.9} />
-                                    <stop offset="95%" stopColor="#ec4899" stopOpacity={0.6} />
-                                </linearGradient>
-                                <linearGradient id="colorRest" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.9} />
-                                    <stop offset="95%" stopColor="#059669" stopOpacity={0.6} />
-                                </linearGradient>
-                                <filter id="glow">
-                                    <feGaussianBlur stdDeviation="2.5" result="blur" />
-                                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                                </filter>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
-                            <XAxis
-                                dataKey="displayDate"
-                                stroke="#ffffff20"
-                                fontSize={10}
-                                fontWeight={700}
-                                tickLine={false}
-                                axisLine={false}
-                                tick={{ fill: '#64748b' }}
-                                dy={10}
-                            />
-                            <YAxis
-                                yAxisId="left"
-                                stroke="#ffffff20"
-                                fontSize={10}
-                                fontWeight={700}
-                                tickLine={false}
-                                axisLine={false}
-                                tick={{ fill: '#64748b' }}
-                            />
-                            <YAxis
-                                yAxisId="right"
-                                orientation="right"
-                                stroke="#ffffff20"
-                                fontSize={10}
-                                fontWeight={700}
-                                tickLine={false}
-                                axisLine={false}
-                                domain={[0, 100]}
-                                tick={{ fill: '#f59e0b' }}
-                            />
-                            <Tooltip
-                                contentStyle={{
-                                    backgroundColor: '#0f172a',
-                                    border: '1px solid rgba(255,255,255,0.1)',
-                                    borderRadius: '16px',
-                                    boxShadow: '0 10px 15px -3px rgba(0,0,0,0.5)',
-                                    backdropFilter: 'blur(10px)'
-                                }}
-                                itemStyle={{ fontSize: '12px', fontWeight: 600 }}
-                                cursor={{ fill: 'rgba(255,255,255,0.03)' }}
-                            />
+            <div className="h-[280px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={chartData} margin={{ top: 10, right: -5, left: -20, bottom: 0 }}>
+                        <defs>
+                            <linearGradient id="colorAdult" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
+                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1} />
+                            </linearGradient>
+                            <linearGradient id="colorChild" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#ec4899" stopOpacity={0.8} />
+                                <stop offset="95%" stopColor="#ec4899" stopOpacity={0.1} />
+                            </linearGradient>
+                            <linearGradient id="colorRest" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+                                <stop offset="95%" stopColor="#10b981" stopOpacity={0.1} />
+                            </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#ffffff03" vertical={false} />
+                        <XAxis
+                            dataKey="displayDate"
+                            stroke="#ffffff10"
+                            fontSize={9}
+                            fontWeight={700}
+                            tickLine={false}
+                            axisLine={false}
+                            tick={{ fill: '#64748b' }}
+                        />
+                        <YAxis
+                            yAxisId="left"
+                            stroke="#ffffff20"
+                            fontSize={10}
+                            fontWeight={700}
+                            tickLine={false}
+                            axisLine={false}
+                            tick={{ fill: '#64748b' }}
+                        />
+                        <YAxis
+                            yAxisId="right"
+                            orientation="right"
+                            stroke="#ffffff20"
+                            fontSize={10}
+                            fontWeight={700}
+                            tickLine={false}
+                            axisLine={false}
+                            domain={[0, 100]}
+                            tick={{ fill: '#f59e0b' }}
+                        />
+                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
                             <Legend
                                 verticalAlign="top"
                                 align="right"
@@ -249,11 +285,10 @@ export default function ProgressChart({ history }: ProgressChartProps) {
                         </ComposedChart>
                     </ResponsiveContainer>
                 </div>
-            )}
 
             {/* Footer Hint */}
             <div className="mt-4 flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-amber-500/5 border border-amber-500/10">
-                <span className="material-icons-round text-amber-500 text-sm">auto_awesome</span>
+                <Sparkles className="w-4 h-4 text-amber-500" />
                 <p className="text-[10px] font-bold text-amber-500/80 uppercase tracking-widest">
                     Higher score indicates optimal Adult/Child harmony
                 </p>

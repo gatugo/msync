@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Task, TaskType, TaskStatus } from '@/types';
-import { X, Clock, Calendar, Type, Trash2, Save, PlusCircle, Sparkles, Loader2 } from 'lucide-react';
+import { X, Clock, Calendar, Type, Trash2, Save, PlusCircle, Sparkles, Loader2, Brain, Coffee } from 'lucide-react';
 import TimePicker from '@/components/TimePicker';
 import DatePicker from '@/components/DatePicker';
 import { parseNaturalDateTime } from '@/lib/datePatterns';
@@ -19,10 +19,10 @@ interface EditTaskModalProps {
     onDelete: (taskId: string) => void;
 }
 
-const typeConfig: Record<TaskType, { emoji: string; label: string; bg: string }> = {
-    ADULT: { emoji: '🔵', label: 'Adult', bg: 'bg-blue-500/20 text-blue-300' },
-    CHILD: { emoji: '🩷', label: 'Child', bg: 'bg-pink-500/20 text-pink-300' },
-    REST: { emoji: '🟢', label: 'Rest', bg: 'bg-green-500/20 text-green-300' },
+const typeConfig: Record<TaskType, { icon: React.ComponentType<{ className?: string }>; iconColor: string; label: string; bg: string }> = {
+    ADULT: { icon: Brain, iconColor: 'text-blue-400', label: 'Adult', bg: 'bg-blue-500/20 text-blue-300' },
+    CHILD: { icon: Sparkles, iconColor: 'text-pink-400', label: 'Child', bg: 'bg-pink-500/20 text-pink-300' },
+    REST: { icon: Coffee, iconColor: 'text-emerald-400', label: 'Rest', bg: 'bg-green-500/20 text-green-300' },
 };
 
 const durations = [
@@ -229,7 +229,12 @@ export default function EditTaskModal({ isOpen, onClose, task, initialDate, init
                                         : 'bg-white/5 border-transparent text-white/50 hover:bg-white/10'
                                         }`}
                                 >
-                                    <span>{typeConfig[t].emoji}</span>
+                                    <span className="flex items-center shrink-0">
+                                        {(() => {
+                                            const Icon = typeConfig[t].icon;
+                                            return <Icon className={`w-4 h-4 ${typeConfig[t].iconColor}`} />;
+                                        })()}
+                                    </span>
                                     <span className="text-sm font-medium">{typeConfig[t].label}</span>
                                 </button>
                             ))}

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Task, TaskStatus } from '@/types';
 import TaskCard from '@/components/TaskCard';
+import { ListTodo, Zap, CheckCircle2, PlusCircle, Hourglass, Plus } from 'lucide-react';
 
 interface CollapsibleColumnProps {
     title: string;
@@ -17,7 +18,7 @@ interface CollapsibleColumnProps {
 const statusConfig = {
     TODO: {
         label: 'To Do',
-        icon: 'list',
+        icon: ListTodo,
         iconBg: 'bg-blue-100 dark:bg-blue-500/20',
         iconColor: 'text-blue-600 dark:text-blue-400',
         countBg: 'bg-slate-200 dark:bg-slate-800',
@@ -26,7 +27,7 @@ const statusConfig = {
     },
     START: {
         label: 'In Progress',
-        icon: 'bolt',
+        icon: Zap,
         iconBg: 'bg-amber-100 dark:bg-amber-500/20',
         iconColor: 'text-amber-600 dark:text-amber-400',
         countBg: 'bg-amber-100 dark:bg-amber-900/40',
@@ -35,7 +36,7 @@ const statusConfig = {
     },
     DONE: {
         label: 'Done',
-        icon: 'check_circle',
+        icon: CheckCircle2,
         iconBg: 'bg-emerald-100 dark:bg-emerald-500/20',
         iconColor: 'text-emerald-600 dark:text-emerald-400',
         countBg: 'bg-emerald-100 dark:bg-emerald-900/40',
@@ -68,6 +69,7 @@ export default function CollapsibleColumn({
     const [isDragOver, setIsDragOver] = useState(false);
     const config = statusConfig[status];
     const count = tasks.length;
+    const StatusIcon = config.icon;
 
     const handleMoveForward = (taskId: string) => {
         const nextStatus = getNextStatus(status);
@@ -111,7 +113,7 @@ export default function CollapsibleColumn({
             <div className="flex items-center justify-between p-4 flex-shrink-0">
                 <div className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-lg ${config.iconBg} flex items-center justify-center ${config.iconColor}`}>
-                        <span className="material-icons-round text-lg">{config.icon}</span>
+                        <StatusIcon className="w-4.5 h-4.5" />
                     </div>
                     <h2 className="font-bold text-slate-200 tracking-tight">{title}</h2>
                     <span className={`${config.countBg} ${config.countColor} text-[10px] px-2 py-0.5 rounded-full font-bold`}>
@@ -120,9 +122,9 @@ export default function CollapsibleColumn({
                 </div>
                 <button
                     onClick={onAddTask}
-                    className="p-1 text-slate-400 hover:text-[#5c67ff] transition-colors"
+                    className="p-1 text-slate-400 hover:text-[#5c67ff] transition-colors cursor-pointer"
                 >
-                    <span className="material-icons-round text-lg">add_circle_outline</span>
+                    <PlusCircle className="w-5 h-5" />
                 </button>
             </div>
 
@@ -130,7 +132,7 @@ export default function CollapsibleColumn({
             <div className={`flex-1 overflow-y-auto custom-scrollbar px-3 pb-3 space-y-3 ${isDragOver ? 'bg-white/[0.02]' : ''}`}>
                 {tasks.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full min-h-[140px] text-slate-500 text-center py-8">
-                        <span className="material-icons-round text-3xl mb-2 opacity-20">hourglass_empty</span>
+                        <Hourglass className="w-8 h-8 mb-2 opacity-20 text-slate-400" />
                         <p className="text-xs">No tasks here yet</p>
                     </div>
                 ) : (
@@ -162,9 +164,9 @@ export default function CollapsibleColumn({
             <div className="p-3 pt-0 flex-shrink-0">
                 <button
                     onClick={onAddTask}
-                    className="w-full py-2.5 rounded-2xl border border-dashed border-slate-700/50 text-slate-500 hover:text-slate-300 hover:border-[#5c67ff]/40 hover:bg-[#5c67ff]/5 transition-all text-xs font-medium flex items-center justify-center gap-2 group"
+                    className="w-full py-2.5 rounded-2xl border border-dashed border-slate-700/50 text-slate-500 hover:text-slate-300 hover:border-[#5c67ff]/40 hover:bg-[#5c67ff]/5 transition-all text-xs font-medium flex items-center justify-center gap-2 group cursor-pointer"
                 >
-                    <span className="material-icons-round text-sm group-hover:scale-110 transition-transform">add</span>
+                    <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" />
                     Add Task
                 </button>
             </div>

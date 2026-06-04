@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, ReactNode, useMemo } from 'react';
-import { X, Send, Bot, Sparkles, TrendingUp, MessageCircle, Trash2, User, PlusCircle, CheckCircle2, RotateCw, Brain, Cpu, Clock, Flag, Zap, Activity, ChevronDown } from 'lucide-react';
+import { X, Send, Bot, Sparkles, TrendingUp, MessageCircle, Trash2, User, PlusCircle, CheckCircle2, RotateCw, Brain, Cpu, Clock, Flag, Zap, Activity, ChevronDown, AlertTriangle, Battery, Calendar, Coffee, Wifi, WifiOff } from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { supabase } from '@/lib/supabase';
 import { Task, DailySnapshot, Goal, TaskType } from '@/types';
@@ -94,6 +94,18 @@ export default function AICoachScreen({
     const setIsOnline = useStore((state) => state.setIsOnline);
     const [connectionToast, setConnectionToast] = useState<{show: boolean, type: 'online' | 'offline'} | null>(null);
     const hasAutoTriggered = useRef(false);
+    const [isMobileModeDropdownOpen, setIsMobileModeDropdownOpen] = useState(false);
+
+    // Lock body scrolling when the AI Coach is mounted on mobile to provide a native feel
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const originalStyle = document.body.style.overflow;
+            document.body.style.overflow = 'hidden';
+            return () => {
+                document.body.style.overflow = originalStyle;
+            };
+        }
+    }, []);
 
     useEffect(() => {
         const handleOnline = () => {
@@ -550,7 +562,7 @@ ${insight}
     }, [tasks, goals, now.getDate()]);
 
     return (
-        <div className="h-full flex flex-col bg-[#0f172a]/65 backdrop-blur-2xl overflow-hidden text-white border border-white/5 rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.45)] relative">
+        <div className="h-full flex flex-col bg-[#0f172a]/65 backdrop-blur-2xl overflow-hidden text-white border-0 md:border md:border-white/5 rounded-none md:rounded-3xl shadow-none md:shadow-[0_25px_60px_rgba(0,0,0,0.45)] relative">
             {/* Ambient Background Aura bleed-through enhancement */}
             <div className="absolute inset-0 bg-gradient-to-b from-indigo-500/5 via-transparent to-pink-500/5 pointer-events-none z-0" />
 
@@ -558,9 +570,11 @@ ${insight}
             {connectionToast && connectionToast.show && (
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-top-4 fade-in duration-300">
                     <div className={`flex items-center gap-2 px-4 py-2 rounded-full shadow-lg border backdrop-blur-xl ${connectionToast.type === 'online' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-amber-500/10 border-amber-500/20 text-amber-400'}`}>
-                        <span className="material-icons-round text-[16px]">
-                            {connectionToast.type === 'online' ? 'wifi' : 'wifi_off'}
-                        </span>
+                        {connectionToast.type === 'online' ? (
+                            <Wifi className="w-4 h-4" />
+                        ) : (
+                            <WifiOff className="w-4 h-4" />
+                        )}
                         <span className="text-xs font-black uppercase tracking-widest">
                             {connectionToast.type === 'online' ? 'Connection Restored' : 'Offline Mode Active'}
                         </span>
@@ -569,28 +583,40 @@ ${insight}
             )}
 
             {/* Shared Header */}
-            <div className="flex items-center justify-between px-5 py-3 border-b border-white/5 bg-slate-950/25 backdrop-blur-md shrink-0 z-10 relative gap-4">
-                {/* Left Side: Brand and Status */}
-                <div className="flex items-center gap-3.5 shrink-0">
-                    <div className="relative group">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-white/5 bg-slate-950/25 backdrop-blur-md shrink-0 z-30 relative gap-4">
+                {/* Left Side: Brand and Status with Mobile Dropdown Trigger */}
+                <div className="flex items-center gap-3 shrink-0 relative">
+                    <div className="relative group shrink-0">
                         <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500 to-fuchsia-500 rounded-xl blur-md opacity-60 group-hover:opacity-100 transition-opacity animate-pulse" />
-                        <div className="relative w-10 h-10 bg-gradient-to-br from-indigo-500 via-purple-500 to-fuchsia-600 rounded-xl flex items-center justify-center shadow-xl shadow-indigo-500/20 border border-white/20 overflow-hidden">
-
-                            <FlowerOfLifeIcon className="w-[33px] h-[33px] text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]" />
+                        <div className="relative w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-indigo-500 via-purple-500 to-fuchsia-600 rounded-xl flex items-center justify-center shadow-xl shadow-indigo-500/20 border border-white/20 overflow-hidden">
+                            <FlowerOfLifeIcon className="w-[30px] h-[30px] sm:w-[33px] sm:h-[33px] text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.7)]" />
                         </div>
                     </div>
-                    <div className="flex flex-col justify-center gap-0.5">
+                    <div className="flex flex-col justify-center gap-0.5 min-w-0">
                         <div className="flex items-center gap-2">
-                            <h2 className="font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 text-base sm:text-lg leading-none tracking-tight drop-shadow-sm">
+                            {/* Desktop-only Static Title */}
+                            <h2 className="hidden md:block font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 text-base sm:text-lg leading-none tracking-tight drop-shadow-sm">
                                 {(preferences.aiEnabled !== false && !preferences.forceOfflineMode && isOnline) ? 'AI Coach' : 'Local Coach'}
                             </h2>
-                            <span className="relative flex h-2 w-2 mt-0.5">
+
+                            {/* Mobile-only Dropdown Title Button */}
+                            <button
+                                onClick={() => setIsMobileModeDropdownOpen(!isMobileModeDropdownOpen)}
+                                className="md:hidden flex items-center gap-1.5 font-black text-white text-base leading-none tracking-tight focus:outline-none select-none active:opacity-70 bg-white/5 px-2.5 py-1.5 rounded-xl border border-white/10"
+                            >
+                                <span>
+                                    {modeButtons.find(b => b.mode === displayMode)?.label || 'AI Coach'}
+                                </span>
+                                <ChevronDown className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                            </button>
+
+                            <span className="relative flex h-2 w-2 mt-0.5 shrink-0">
                                 <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${(preferences.aiEnabled !== false && !preferences.forceOfflineMode && isOnline) ? 'bg-emerald-400' : 'bg-amber-400'}`}></span>
                                 <span className={`relative inline-flex rounded-full h-2 w-2 ${(preferences.aiEnabled !== false && !preferences.forceOfflineMode && isOnline) ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,1)]' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,1)]'}`}></span>
                             </span>
                         </div>
                         <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest font-black mt-0.5">
-                            <span className="text-slate-400">Balance</span>
+                            <span className="text-slate-400 hidden sm:inline">Balance</span>
                             <div className="flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded-md border border-white/5">
                                 <span className="text-white font-black">{score}</span>
                                 <span className="text-white/30">•</span>
@@ -598,6 +624,56 @@ ${insight}
                             </div>
                         </div>
                     </div>
+
+                    {/* Mobile Dropdown Portal/Menu */}
+                    {isMobileModeDropdownOpen && (
+                        <>
+                            <div 
+                                className="fixed inset-0 z-40 bg-black/10 backdrop-blur-[1px] md:hidden" 
+                                onClick={() => setIsMobileModeDropdownOpen(false)} 
+                            />
+                            <div className="absolute top-[calc(100%+8px)] left-0 mt-1 w-52 bg-slate-950/95 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] p-2 z-50 flex flex-col gap-1 md:hidden animate-in fade-in slide-in-from-top-3 duration-200">
+                                {modeButtons.map((btn) => {
+                                    const isSelected = displayMode === btn.mode;
+                                    const IconComponent = btn.icon;
+                                    return (
+                                        <button
+                                            key={btn.mode}
+                                            onClick={() => {
+                                                const newMode = btn.mode;
+                                                if (newMode === 'evening_recap') {
+                                                    const hr = new Date().getHours();
+                                                    let targetMode: CoachMode = 'evening_recap';
+                                                    if (hr >= 5 && hr < 12) {
+                                                        targetMode = 'morning_brief';
+                                                    } else if (hr >= 21 || hr < 5) {
+                                                        targetMode = 'night_reflection';
+                                                    }
+                                                    setMode(targetMode);
+                                                    handleAskCoach(targetMode);
+                                                } else {
+                                                    setMode(newMode);
+                                                    if (newMode !== 'chat') handleAskCoach(newMode);
+                                                }
+                                                setIsMobileModeDropdownOpen(false);
+                                            }}
+                                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-all ${
+                                                isSelected 
+                                                    ? 'bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 text-indigo-200' 
+                                                    : 'text-slate-300 hover:text-white hover:bg-white/5 border border-transparent'
+                                            }`}
+                                        >
+                                            <IconComponent className={`w-4 h-4 ${isSelected ? 'text-indigo-400' : 'text-slate-400'}`} />
+                                            <span>{btn.label}</span>
+                                            {isSelected && (
+                                                <span className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.8)]" />
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 {/* Center: Integrated Low-Profile Mode Selector (Desktop Space Optimization) */}
@@ -651,39 +727,13 @@ ${insight}
                 {/* LEFT COLUMN: Modern Conversational Thread */}
                 <div className="flex-1 flex flex-col min-w-0 h-full relative">
                     
-                    {/* Mobile-Only Mode Selector */}
-                    <div className="px-5 py-3 shrink-0 bg-slate-950/10 backdrop-blur-sm border-b border-white/5 relative z-10 md:hidden">
-                        <ModeSelector 
-                            modes={modeButtons}
-                            currentMode={displayMode}
-                            onModeChange={(newMode) => { 
-                                if (newMode === 'evening_recap') {
-                                    const hr = new Date().getHours();
-                                    let targetMode: CoachMode = 'evening_recap';
-                                    if (hr >= 5 && hr < 12) {
-                                        targetMode = 'morning_brief';
-                                    } else if (hr >= 21 || hr < 5) {
-                                        targetMode = 'night_reflection';
-                                    }
-                                    setMode(targetMode);
-                                    handleAskCoach(targetMode);
-                                } else {
-                                    setMode(newMode);
-                                    if (newMode !== 'chat') handleAskCoach(newMode);
-                                }
-                            }}
-                            containerClassName="flex items-center bg-slate-950/50 p-1.5 rounded-2xl border border-white/10 relative overflow-x-auto scrollbar-none backdrop-blur-md gap-1"
-                            buttonClassName="shrink-0 flex-1 flex items-center justify-center gap-2 py-2.5 px-3.5 rounded-xl text-[11px] font-extrabold uppercase tracking-widest transition-all duration-300 relative z-10 whitespace-nowrap"
-                            labelVisibilityClass="hidden sm:inline whitespace-nowrap"
-                            shortLabelVisibilityClass="inline sm:hidden whitespace-nowrap"
-                        />
-                    </div>
+                    {/* Mobile-Only Mode Selector - fully replaced by header title dropdown on mobile */}
 
                     {/* Sub-selector for Recaps (Morning, Evening, Night) */}
                     {(mode === 'morning_brief' || mode === 'evening_recap' || mode === 'night_reflection') && (
-                        <div className="px-5 py-3 shrink-0 bg-slate-950/15 backdrop-blur-md border-b border-white/5 flex flex-col sm:flex-row items-center justify-between gap-3 relative z-20">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Recap Selection</span>
-                            <div className="flex bg-slate-950/50 p-1 rounded-xl border border-white/10 relative overflow-hidden gap-1.5 w-full sm:w-auto">
+                        <div className="px-4 sm:px-5 py-2 sm:py-3 shrink-0 bg-slate-950/15 backdrop-blur-md border-b border-white/5 flex items-center justify-center sm:justify-between gap-2 sm:gap-3 relative z-20">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 hidden sm:inline">Recap Selection</span>
+                            <div className="flex bg-slate-950/50 p-1 rounded-xl border border-white/10 relative overflow-hidden gap-1 w-full sm:w-auto">
                                 {[
                                     { id: 'morning_brief' as CoachMode, label: 'Morning Brief', icon: '🌅', colorClass: 'text-amber-400' },
                                     { id: 'evening_recap' as CoachMode, label: 'Evening Recap', icon: '🌆', colorClass: 'text-orange-400' },
@@ -697,14 +747,14 @@ ${insight}
                                                 setMode(sub.id);
                                                 handleAskCoach(sub.id);
                                             }}
-                                            className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all duration-300 relative ${
+                                            className={`flex-1 sm:flex-none flex items-center justify-center gap-1 py-1 px-2 sm:px-3 rounded-lg text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider transition-all duration-300 relative ${
                                                 isSubActive ? 'text-white' : 'text-slate-400 hover:text-white'
                                             }`}
                                         >
                                             {isSubActive && (
                                                 <div className="absolute inset-0 bg-white/10 rounded-lg border border-white/10 shadow-[0_2px_10px_rgba(255,255,255,0.05)]" />
                                             )}
-                                            <span className={`${sub.colorClass} text-[13px]`}>{sub.icon}</span>
+                                            <span className={`${sub.colorClass} text-[11px] sm:text-[13px]`}>{sub.icon}</span>
                                             <span className="hidden xs:inline">{sub.label}</span>
                                             <span className="inline xs:hidden">{sub.label.split(' ')[0]}</span>
                                         </button>
@@ -716,9 +766,9 @@ ${insight}
 
                     {/* Sub-selector for Summary (Daily, Weekly, Monthly) */}
                     {mode === 'summary' && (
-                        <div className="px-5 py-3 shrink-0 bg-slate-950/15 backdrop-blur-md border-b border-white/5 flex flex-col sm:flex-row items-center justify-between gap-3 relative z-20">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Summary Scope</span>
-                            <div className="flex bg-slate-950/50 p-1 rounded-xl border border-white/10 relative overflow-hidden gap-1.5 w-full sm:w-auto">
+                        <div className="px-4 sm:px-5 py-2 sm:py-3 shrink-0 bg-slate-950/15 backdrop-blur-md border-b border-white/5 flex items-center justify-center sm:justify-between gap-2 sm:gap-3 relative z-20">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 hidden sm:inline">Summary Scope</span>
+                            <div className="flex bg-slate-950/50 p-1 rounded-xl border border-white/10 relative overflow-hidden gap-1 w-full sm:w-auto">
                                 {[
                                     { id: 'daily' as const, label: 'Daily Summary', icon: '📅' },
                                     { id: 'weekly' as const, label: 'Weekly Summary', icon: '📊' },
@@ -732,14 +782,14 @@ ${insight}
                                                 setSummaryInterval(sub.id);
                                                 handleAskCoach('summary', undefined, sub.id);
                                             }}
-                                            className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all duration-300 relative ${
+                                            className={`flex-1 sm:flex-none flex items-center justify-center gap-1 py-1 px-2 sm:px-3 rounded-lg text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider transition-all duration-300 relative ${
                                                 isSubActive ? 'text-white' : 'text-slate-400 hover:text-white'
                                             }`}
                                         >
                                             {isSubActive && (
                                                 <div className="absolute inset-0 bg-white/10 rounded-lg border border-white/10 shadow-[0_2px_10px_rgba(255,255,255,0.05)]" />
                                             )}
-                                            <span className="text-[13px]">{sub.icon}</span>
+                                            <span className="text-[11px] sm:text-[13px]">{sub.icon}</span>
                                             <span className="hidden xs:inline">{sub.label}</span>
                                             <span className="inline xs:hidden">{sub.label.split(' ')[0]}</span>
                                         </button>
@@ -784,8 +834,8 @@ ${insight}
                                         </div>
                                         <div className={`relative max-w-[85%] border transition-all duration-300 group ${
                                             msg.role === 'user' 
-                                                ? 'bg-gradient-to-tr from-indigo-500 via-indigo-600 to-purple-600 border-indigo-500/30 text-white rounded-[24px] rounded-br-[4px] shadow-[0_8px_25px_-5px_rgba(99,102,241,0.45)] user-message-glow font-semibold px-4 py-2.5' 
-                                                : 'bg-white/[0.04] dark:bg-white/[0.02] backdrop-blur-2xl border-white/10 text-slate-100 rounded-[28px] rounded-tl-[4px] shadow-[0_15px_50px_-15px_rgba(0,0,0,0.6)] assistant-message-glow hover:border-white/20 pl-5 pr-4 py-2.5'
+                                                ? 'bg-gradient-to-tr from-indigo-500 via-indigo-600 to-purple-600 border-indigo-500/30 text-white rounded-[24px] rounded-br-[4px] shadow-[0_8px_25px_-5px_rgba(99,102,241,0.45)] user-message-glow font-semibold px-3.5 sm:px-4 py-2 sm:py-2.5' 
+                                                : 'bg-white/[0.04] dark:bg-white/[0.02] backdrop-blur-2xl border-white/10 text-slate-100 rounded-[28px] rounded-tl-[4px] shadow-[0_15px_50px_-15px_rgba(0,0,0,0.6)] assistant-message-glow hover:border-white/20 pl-4 pr-3.5 sm:pl-5 sm:pr-4 py-2 sm:py-2.5'
                                         }`}>
                                             {/* Glowing Pulse Accent Strip for Assistant Bubble */}
                                             {msg.role === 'assistant' && (
@@ -802,8 +852,8 @@ ${insight}
                                                     <details className="group w-full max-w-md transition-all duration-500 ease-in-out">
                                                         <summary className="w-fit flex items-center gap-2 px-3 py-1 rounded-full border border-indigo-500/25 bg-indigo-500/10 hover:bg-indigo-500/20 hover:border-indigo-500/40 text-indigo-300 font-bold select-none text-[10px] uppercase tracking-wider cursor-pointer transition-all duration-300 shadow-[0_2px_10px_rgba(99,102,241,0.1)] hover:scale-105 active:scale-95 list-none [&::-webkit-details-marker]:hidden">
                                                             <div className="relative flex items-center justify-center">
-                                                                <div className="absolute inset-0 bg-indigo-500/30 rounded-full blur-[3px] animate-pulse" />
-                                                                <Brain className="w-3.5 h-3.5 text-indigo-400 relative z-10" />
+                                                                 <div className="absolute inset-0 bg-indigo-500/30 rounded-full blur-[3px] animate-pulse" />
+                                                                 <Brain className="w-3.5 h-3.5 text-indigo-400 relative z-10" />
                                                             </div>
                                                             <span className="leading-none mt-0.5">Cognitive Process</span>
                                                             <span className="text-[8px] text-slate-400 group-open:hidden uppercase font-black px-1.5 py-0.5 rounded-full bg-white/5 border border-white/10 ml-1">Expand</span>
@@ -826,7 +876,7 @@ ${insight}
                                     </div>
 
                                     {msg.actions && (
-                                        <div className={`${msg.role === 'user' ? 'mr-13' : 'ml-13'} space-y-4`}>
+                                        <div className={`${msg.role === 'user' ? 'mr-4 sm:mr-13' : 'ml-4 sm:ml-13'} space-y-4`}>
                                             {msg.actions.map((action, idx) => {
                                                 const isExecuted = msg.executedActions?.includes(idx);
                                                 const design = action.taskType === 'CHILD' 
@@ -835,7 +885,7 @@ ${insight}
                                                     ? { neon: 'suggestion-neon-green', bg: 'bg-emerald-500/[0.03]', border: 'border-emerald-500/25 hover:border-emerald-500/40', text: 'text-emerald-400', emoji: '🟢' }
                                                     : { neon: 'suggestion-neon-blue', bg: 'bg-indigo-500/[0.03]', border: 'border-indigo-500/25 hover:border-indigo-500/40', text: 'text-indigo-400', emoji: '🔵' };
                                                 return (
-                                                    <div key={idx} className={`${design.bg} ${design.border} ${design.neon} border rounded-[24px] p-5 shadow-xl overflow-hidden backdrop-blur-md transition-all duration-300`}>
+                                                    <div key={idx} className={`${design.bg} ${design.border} ${design.neon} border rounded-2xl sm:rounded-[24px] p-3.5 sm:p-5 shadow-xl overflow-hidden backdrop-blur-md transition-all duration-300`}>
                                                         <div className="flex items-start justify-between gap-4 mb-4">
                                                             <div className="flex-1">
                                                                 <div className="font-semibold text-slate-200">
@@ -864,26 +914,26 @@ ${insight}
                                                             </div>
                                                         </div>
 
-                                                        <div className="flex gap-3">
+                                                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                                                             {!isExecuted ? (
                                                                 <button
                                                                     onClick={() => {
                                                                         handleExecuteAction(action, msg.id);
                                                                         setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, executedActions: [...(m.executedActions || []), idx] } : m));
                                                                     }}
-                                                                    className="flex-1 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:brightness-110 text-white py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 border border-white/10 active:scale-95"
+                                                                    className="flex-1 w-full sm:w-auto bg-gradient-to-r from-indigo-500 to-indigo-600 hover:brightness-110 text-white py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 border border-white/10 active:scale-95"
                                                                 >
                                                                     {action.type === 'REMEMBER' ? <Brain className="w-4 h-4" /> : <PlusCircle className="w-4 h-4" />}
                                                                     {action.type === 'REMEMBER' ? 'Save Memory' : 'Add to Timeline'}
                                                                 </button>
                                                             ) : (
-                                                                <div className="flex-1 bg-emerald-500/20 text-emerald-400 py-3 rounded-2xl text-xs font-extrabold border border-emerald-500/25 cursor-default text-center tracking-widest uppercase">
+                                                                <div className="flex-1 w-full sm:w-auto bg-emerald-500/20 text-emerald-400 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs font-extrabold border border-emerald-500/25 cursor-default text-center tracking-widest uppercase">
                                                                     {action.type === 'REMEMBER' ? 'Memory Saved' : 'Added to Timeline'}
                                                                 </div>
                                                             )}
                                                             <button
                                                                 onClick={() => handleSuggestAnother(action)}
-                                                                className="flex-1 bg-white/5 hover:bg-white/10 text-white/70 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 border border-white/10 active:scale-95"
+                                                                className="flex-1 w-full sm:w-auto bg-white/5 hover:bg-white/10 text-white/70 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 border border-white/10 active:scale-95"
                                                             >
                                                                 <RotateCw className="w-3.5 h-3.5" />
                                                                 Suggest Another
@@ -924,10 +974,10 @@ ${insight}
                                         const q = `I missed my scheduled tasks for today: ${taskTitles}. Please suggest a new time to shift them to, or let me know if I should move them to tomorrow.`;
                                         handleAskCoach('chat', q);
                                     }}
-                                    className="px-4 py-2 rounded-full bg-orange-500/20 text-orange-400 text-xs font-bold hover:bg-orange-500/30 border border-orange-500/30 transition-all flex items-center gap-2 shadow-lg shadow-orange-500/10 hover:scale-105"
+                                    className="px-3.5 py-1.5 rounded-full bg-orange-500/10 text-orange-400 text-xs font-bold hover:bg-orange-500/25 hover:text-white border border-orange-500/20 hover:border-orange-500/40 transition-all flex items-center gap-1.5 shadow-lg shadow-orange-500/5 hover:scale-105 active:scale-95"
                                 >
-                                    <span className="material-icons-round text-[16px]">warning</span>
-                                    ⚠️ Reschedule Missed Tasks
+                                    <AlertTriangle className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                                    <span>Reschedule Missed Tasks</span>
                                 </button>
                             )}
                             <button
@@ -935,40 +985,44 @@ ${insight}
                                     const q = `My energy is extremely low right now. Please review my upcoming tasks for today and suggest swapping one ADULT task for a REST or CHILD task.`;
                                     handleAskCoach('chat', q);
                                 }}
-                                className="px-4 py-2 rounded-full bg-blue-500/20 text-blue-400 text-xs font-bold hover:bg-blue-500/30 border border-blue-500/30 transition-all flex items-center gap-2 shadow-lg shadow-blue-500/10 hover:scale-105"
+                                className="px-3.5 py-1.5 rounded-full bg-blue-500/10 text-blue-400 text-xs font-bold hover:bg-blue-500/25 hover:text-white border border-blue-500/20 hover:border-blue-500/40 transition-all flex items-center gap-1.5 shadow-lg shadow-blue-500/5 hover:scale-105 active:scale-95"
                             >
-                                <span className="material-icons-round text-[16px]">battery_1_bar</span>
-                                🔋 Low Energy: Need Swap
+                                <Battery className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                                <span>Low Energy: Need Swap</span>
                             </button>
                         </div>
                     )}
 
                     {/* Floating Input command capsule */}
-                    <div className="px-5 py-4 shrink-0 bg-gradient-to-t from-slate-950/20 to-transparent z-10 relative">
+                    <div className="px-4 sm:px-5 py-3 sm:py-4 shrink-0 bg-gradient-to-t from-slate-950/20 to-transparent z-10 relative">
                         {/* Quick Prompts Capsules Row */}
                         <div className="flex gap-2 items-center overflow-x-auto custom-scrollbar pb-2 max-w-3xl mx-auto pl-1">
                             <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap mr-1">Prompts:</span>
-                            <button onClick={() => handleTriggerPrompt("Analyze my today's balance")} className="text-[9px] font-bold px-2.5 py-1 rounded-full border border-indigo-500/20 bg-indigo-500/[0.04] text-indigo-300 hover:bg-indigo-500/10 hover:border-indigo-500/40 transition-all active:scale-95 whitespace-nowrap">
-                                🧠 Analyze Balance
+                            <button onClick={() => handleTriggerPrompt("Analyze my today's balance")} className="text-[9px] font-bold px-2.5 py-1 rounded-full border border-indigo-500/20 bg-indigo-500/[0.04] text-indigo-300 hover:bg-indigo-500/10 hover:border-indigo-500/40 transition-all active:scale-95 whitespace-nowrap flex items-center gap-1">
+                                <Brain className="w-3 h-3 text-indigo-400 shrink-0" />
+                                <span>Analyze Balance</span>
                             </button>
-                            <button onClick={() => handleTriggerPrompt("Suggest a child joy task")} className="text-[9px] font-bold px-2.5 py-1 rounded-full border border-pink-500/20 bg-pink-500/[0.04] text-pink-300 hover:bg-pink-500/10 hover:border-pink-500/40 transition-all active:scale-95 whitespace-nowrap">
-                                🩷 Suggest Play Task
+                            <button onClick={() => handleTriggerPrompt("Suggest a child joy task")} className="text-[9px] font-bold px-2.5 py-1 rounded-full border border-pink-500/20 bg-pink-500/[0.04] text-pink-300 hover:bg-pink-500/10 hover:border-pink-500/40 transition-all active:scale-95 whitespace-nowrap flex items-center gap-1">
+                                <Sparkles className="w-3 h-3 text-pink-400 shrink-0" />
+                                <span>Suggest Play Task</span>
                             </button>
-                            <button onClick={() => handleTriggerPrompt("Propose a perfect plan")} className="text-[9px] font-bold px-2.5 py-1 rounded-full border border-purple-500/20 bg-purple-500/[0.04] text-purple-300 hover:bg-purple-500/10 hover:border-purple-500/40 transition-all active:scale-95 whitespace-nowrap">
-                                📅 Propose 24h Plan
+                            <button onClick={() => handleTriggerPrompt("Propose a perfect plan")} className="text-[9px] font-bold px-2.5 py-1 rounded-full border border-purple-500/20 bg-purple-500/[0.04] text-purple-300 hover:bg-purple-500/10 hover:border-purple-500/40 transition-all active:scale-95 whitespace-nowrap flex items-center gap-1">
+                                <Calendar className="w-3 h-3 text-purple-400 shrink-0" />
+                                <span>Propose 24h Plan</span>
                             </button>
-                            <button onClick={() => handleTriggerPrompt("Need a recovery rest break")} className="text-[9px] font-bold px-2.5 py-1 rounded-full border border-emerald-500/20 bg-emerald-500/[0.04] text-emerald-300 hover:bg-emerald-500/10 hover:border-emerald-500/40 transition-all active:scale-95 whitespace-nowrap">
-                                🟢 recovery break
+                            <button onClick={() => handleTriggerPrompt("Need a recovery rest break")} className="text-[9px] font-bold px-2.5 py-1 rounded-full border border-emerald-500/20 bg-emerald-500/[0.04] text-emerald-300 hover:bg-emerald-500/10 hover:border-emerald-500/40 transition-all active:scale-95 whitespace-nowrap flex items-center gap-1">
+                                <Coffee className="w-3 h-3 text-emerald-400 shrink-0" />
+                                <span>Recovery Break</span>
                             </button>
                         </div>
 
                         {/* Modern Chat Input Shell */}
                         <div className="relative max-w-3xl mx-auto group">
                             {/* Animated glowing border effect */}
-                            <div className="absolute -inset-[1px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-[28px] opacity-20 group-focus-within:opacity-50 transition-opacity duration-500 blur-[2px]"></div>
+                            <div className="absolute -inset-[1px] bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-3xl opacity-20 group-focus-within:opacity-50 transition-opacity duration-500 blur-[2px]"></div>
                             
-                            <div className="relative flex items-end gap-3 bg-[#1e293b]/90 backdrop-blur-2xl rounded-[28px] border border-white/10 p-2 shadow-[0_8px_30px_rgb(0,0,0,0.4)] transition-all">
-                                <div className="flex-1 relative pl-4 pt-1.5 pb-1">
+                            <div className="relative flex items-end gap-3 bg-[#1e293b]/90 backdrop-blur-2xl rounded-3xl border border-white/10 p-1.5 sm:p-2 shadow-[0_8px_30px_rgb(0,0,0,0.4)] transition-all">
+                                <div className="flex-1 relative pl-3.5 sm:pl-4 pt-1 sm:pt-1.5 pb-1">
                                     <textarea
                                         id="chatInput"
                                         name="chatInput"
@@ -978,13 +1032,13 @@ ${insight}
                                         onFocus={() => mode !== 'chat' && setMode('chat')}
                                         onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (question.trim() && !isLoading) { handleAskCoach('chat'); setMode('chat'); } } }}
                                         placeholder="Ask MindSync..."
-                                        className="w-full bg-transparent border-0 text-[15px] text-white placeholder-slate-400 focus:outline-none transition-all resize-none custom-scrollbar font-medium max-h-32 min-h-[44px] leading-relaxed"
+                                        className="w-full bg-transparent border-0 text-[14px] sm:text-[15px] text-white placeholder-slate-400 focus:outline-none transition-all resize-none custom-scrollbar font-medium max-h-32 min-h-[38px] sm:min-h-[44px] leading-relaxed"
                                     />
                                 </div>
                                 <button
                                     onClick={() => { handleAskCoach('chat'); setMode('chat'); }}
                                     disabled={!question.trim() || isLoading}
-                                    className="h-[44px] w-[44px] rounded-[20px] bg-white hover:bg-slate-200 text-indigo-950 shadow-lg active:scale-95 disabled:bg-white/10 disabled:text-white/30 transition-all flex items-center justify-center shrink-0 border-none group"
+                                    className="h-9.5 w-9.5 sm:h-11 sm:w-11 rounded-full bg-white hover:bg-slate-200 text-indigo-950 shadow-lg active:scale-95 disabled:bg-white/10 disabled:text-white/30 transition-all flex items-center justify-center shrink-0 border-none group"
                                 >
                                     {isLoading ? (
                                         <div className="w-5 h-5 border-2 border-indigo-950/30 border-t-indigo-950 rounded-full animate-spin" />
@@ -1193,7 +1247,24 @@ ${insight}
                                                 onClick={() => setQuickAddType(t)}
                                                 className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest transition-all ${quickAddType === t ? 'bg-white/10 text-white' : 'text-slate-400 hover:text-white'}`}
                                             >
-                                                {t === 'ADULT' ? '🔵 Focus' : t === 'CHILD' ? '🩷 Joy' : '🟢 Rest'}
+                                                <span className="flex items-center gap-1">
+                                                    {t === 'ADULT' ? (
+                                                        <>
+                                                            <Brain className="w-2.5 h-2.5 text-blue-400 shrink-0" />
+                                                            <span>Focus</span>
+                                                        </>
+                                                    ) : t === 'CHILD' ? (
+                                                        <>
+                                                            <Sparkles className="w-2.5 h-2.5 text-pink-400 shrink-0" />
+                                                            <span>Joy</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Coffee className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
+                                                            <span>Rest</span>
+                                                        </>
+                                                    )}
+                                                </span>
                                             </button>
                                         ))}
                                     </div>

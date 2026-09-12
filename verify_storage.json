@@ -1,0 +1,66 @@
+{
+  "state": {
+    "tasks": [
+      {
+        "id": "1789146433242-z8m0acl5e",
+        "title": "Schedule morning meeting on 2026-09-09 at 9am for 1 hour",
+        "type": "ADULT",
+        "status": "TODO",
+        "scheduledDate": "2011-02-09",
+        "scheduledTime": "09:00",
+        "duration": 60,
+        "createdAt": "2026-09-11T17:07:13.242Z"
+      }
+    ],
+    "history": [
+      {
+        "date": "2026-09-11",
+        "tasks": [
+          {
+            "id": "1789146433242-z8m0acl5e",
+            "title": "Schedule morning meeting on 2026-09-09 at 9am for 1 hour",
+            "type": "ADULT",
+            "status": "TODO",
+            "scheduledDate": "2011-02-09",
+            "scheduledTime": "09:00",
+            "duration": 60,
+            "createdAt": "2026-09-11T17:07:13.242Z"
+          }
+        ],
+        "score": 50,
+        "adultCompleted": 0,
+        "childCompleted": 0,
+        "restCompleted": 0
+      }
+    ],
+    "goals": [],
+    "aiMemory": [],
+    "learnedPatterns": [],
+    "_hasHydrated": true,
+    "preferences": {
+      "hobbies": [
+        "Reading",
+        "Hiking",
+        "Gaming"
+      ],
+      "interests": [
+        "Technology",
+        "Art",
+        "Music"
+      ],
+      "passions": [
+        "Learning",
+        "Creativity"
+      ],
+      "work": [
+        "Software Dev",
+        "Management"
+      ],
+      "aiEnabled": true,
+      "autoArrangeTasks": false,
+      "forceOfflineMode": false
+    },
+    "isOnline": true
+  },
+  "version": 0
+}

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, ReactNode, useMemo } from 'react';
 import { X, Send, Bot, Sparkles, TrendingUp, MessageCircle, Trash2, User, PlusCircle, CheckCircle2, RotateCw, Brain, Cpu, Clock, Flag, Zap, Activity, ChevronDown, AlertTriangle, Battery, Calendar, Coffee, Wifi, WifiOff } from 'lucide-react';
 import { useStore } from '@/store/useStore';
-import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/db';
 import { Task, DailySnapshot, Goal, TaskType } from '@/types';
 import { parseNaturalDateTime, format12h } from '@/lib/datePatterns';
 import { parseOfflineTask, generateSmartInsight } from '@/lib/smartLogic';
@@ -201,13 +201,15 @@ export default function AICoachScreen({
         }
     }, [initialMode]);
 
-    // Auto-trigger on mount or mode change from outside
+    // Auto-trigger on mount or mode/question change from outside
     useEffect(() => {
-        if (initialMode && initialMode !== 'advice' && !hasAutoTriggered.current) {
+        if (initialMode && initialMode !== 'advice') {
             if (initialMode === 'chat' && initialQuestion) {
+                hasAutoTriggered.current = false;
                 setQuestion(initialQuestion);
                 handleAskCoach('chat', initialQuestion);
             } else if (initialMode === 'evening_recap') {
+                hasAutoTriggered.current = false;
                 const hr = new Date().getHours();
                 let targetMode: CoachMode = 'evening_recap';
                 if (hr >= 5 && hr < 12) {
@@ -218,6 +220,7 @@ export default function AICoachScreen({
                 setMode(targetMode);
                 handleAskCoach(targetMode);
             } else {
+                hasAutoTriggered.current = false;
                 handleAskCoach(initialMode);
             }
             hasAutoTriggered.current = true;
@@ -362,10 +365,17 @@ export default function AICoachScreen({
         setError('');
 
         try {
-            if (preferences.aiEnabled === false || preferences.forceOfflineMode || !isOnline) {
-                await runOfflineLogic(activeMode, currentQuestion, overrideInterval, aiMsgId);
-                setIsLoading(false);
-                setIsTyping(false);
+            const stepfunConfig = db.getStepFunConfig();
+            const hasValidStepFun = !!stepfunConfig?.apiKey?.trim();
+
+            if (!hasValidStepFun) {
+                if (activeMode === 'chat' && currentQuestion.trim()) {
+                    await runOfflineLogic(activeMode, currentQuestion, overrideInterval, aiMsgId);
+                } else {
+                    setError('Add a StepFun API key in Settings to use AI Coach.');
+                    setIsLoading(false);
+                    setIsTyping(false);
+                }
                 return;
             }
 
@@ -373,14 +383,10 @@ export default function AICoachScreen({
             const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
             const localTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 
-            const { data: { session } } = await supabase.auth.getSession();
-            const token = session?.access_token;
-
             const res = await fetch('/api/coach', {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
-                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                 },
                 body: JSON.stringify({
                     mode: activeMode,
@@ -396,11 +402,16 @@ export default function AICoachScreen({
                     preferences,
                     aiMemory,
                     summaryInterval: activeMode === 'summary' ? (overrideInterval || summaryInterval) : undefined,
+                    stepfunConfig,
                 }),
             });
 
             if (!res.ok) {
-                throw new Error(`HTTP Error ${res.status}`);
+                const errText = await res.text().catch(() => 'Unknown error');
+                setError(`AI request failed: ${res.status} - ${errText}`);
+                setIsLoading(false);
+                setIsTyping(false);
+                return;
             }
 
             if (!res.body) throw new Error('No stream body');
@@ -466,9 +477,47 @@ export default function AICoachScreen({
            responseText = `**[OFFLINE MODE]**\n\n${insight}`;
         } else if (activeMode === 'chat') {
             const isSuggestAnother = input.startsWith("I'd like 3 distinct alternative suggestions for");
+            const isBreakdown = input.includes("break down my goal") || input.includes("Break down my goal");
+            const isStartGoal = input.includes("start working on my goal") || input.includes("Start working on my goal");
             
             if (isSuggestAnother) {
                 responseText = `**[OFFLINE MODE]**\n\nI cannot generate dynamic alternatives while offline. Please try adding a task manually or reconnect to the cloud.`;
+            } else if (isBreakdown || isStartGoal) {
+                let goalTitle = 'this goal';
+                if (isBreakdown) {
+                    const match = input.match(/break down my goal ['"]([^'"]+)['"]/i);
+                    if (match) goalTitle = match[1];
+                } else if (isStartGoal) {
+                    const match = input.match(/start working on my goal ['"]([^'"]+)['"]/i);
+                    if (match) goalTitle = match[1];
+                }
+                
+                const today = new Date();
+                const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                
+                responseText = `**[OFFLINE MODE]**\n\nI've prepared a starter plan for **${goalTitle}**. Here are the first tasks to build momentum:\n\n`;
+                
+                const starterTasks = [
+                    { title: `Research: ${goalTitle}`, type: 'ADULT' as TaskType, duration: 30, time: '09:00' },
+                    { title: `Plan: ${goalTitle}`, type: 'ADULT' as TaskType, duration: 30, time: '10:00' },
+                    { title: `Execute: ${goalTitle}`, type: 'ADULT' as TaskType, duration: 60, time: '14:00' },
+                    { title: `Review: ${goalTitle}`, type: 'CHILD' as TaskType, duration: 30, time: '18:00' },
+                ];
+                
+                starterTasks.forEach((task, idx) => {
+                    responseText += `${idx + 1}. **${task.title}** (${task.type}, ${task.duration}m)\n`;
+                    actions.push({
+                        type: 'CREATE_TASK',
+                        title: task.title,
+                        taskType: task.type,
+                        duration: task.duration,
+                        scheduledDate: dateStr,
+                        scheduledTime: task.time,
+                        projectedScore: 5
+                    });
+                });
+                
+                responseText += `\nClick 'Add to Timeline' below to commit these tasks to your day.`;
             } else {
                 const parsed = parseOfflineTask(input);
                 const isTaskRequest = parsed.title && parsed.title !== 'New Task';
@@ -485,7 +534,7 @@ export default function AICoachScreen({
                         projectedScore: 5
                     });
                 } else {
-                    responseText = `**[OFFLINE MODE]**\n\nI am currently offline, but I can still help you schedule tasks or check your balance.\n\nType something like **"Break at 12pm for 1 hour"** to add a task.\n\n> ${insight}`;
+                    responseText = `**[OFFLINE MODE]**\n\nI am currently offline, but I can still help you schedule tasks or check your balance.\n\nType something like **"Break at 12pm for 1 hour"** to add a task, or ask me to **break down a goal** into starter tasks.\n\n> ${insight}`;
                 }
             }
         } else if (activeMode === 'summary') {
@@ -598,6 +647,27 @@ ${insight}
                             <h2 className="hidden md:block font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 text-base sm:text-lg leading-none tracking-tight drop-shadow-sm">
                                 {(preferences.aiEnabled !== false && !preferences.forceOfflineMode && isOnline) ? 'AI Coach' : 'Local Coach'}
                             </h2>
+                            
+                            {/* Mode Badge - shows StepFun vs Smart Logic */}
+                            {preferences.aiEnabled !== false && !preferences.forceOfflineMode && isOnline && (
+                                <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest">
+                                    {(() => {
+                                        const stepfunConfig = db.getStepFunConfig();
+                                        const hasKey = !!stepfunConfig?.apiKey?.trim();
+                                        return hasKey ? (
+                                            <span className="text-emerald-400 flex items-center gap-1">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                                StepFun
+                                            </span>
+                                        ) : (
+                                            <span className="text-amber-400 flex items-center gap-1">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                                Smart Logic
+                                            </span>
+                                        );
+                                    })()}
+                                </span>
+                            )}
 
                             {/* Mobile-only Dropdown Title Button */}
                             <button
@@ -965,7 +1035,7 @@ ${insight}
                     </div>
 
                     {/* Suggestion Chips */}
-                    {mode === 'chat' && (
+                    {mode === 'chat' && messages.length === 0 && (
                         <div className="px-5 pb-3 shrink-0 relative z-20 flex flex-wrap gap-2 bg-gradient-to-t from-slate-950/40 to-transparent">
                             {missedTasks.length > 0 && (
                                 <button
@@ -995,26 +1065,28 @@ ${insight}
 
                     {/* Floating Input command capsule */}
                     <div className="px-4 sm:px-5 py-3 sm:py-4 shrink-0 bg-gradient-to-t from-slate-950/20 to-transparent z-10 relative">
-                        {/* Quick Prompts Capsules Row */}
-                        <div className="flex gap-2 items-center overflow-x-auto custom-scrollbar pb-2 max-w-3xl mx-auto pl-1">
-                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap mr-1">Prompts:</span>
-                            <button onClick={() => handleTriggerPrompt("Analyze my today's balance")} className="text-[9px] font-bold px-2.5 py-1 rounded-full border border-indigo-500/20 bg-indigo-500/[0.04] text-indigo-300 hover:bg-indigo-500/10 hover:border-indigo-500/40 transition-all active:scale-95 whitespace-nowrap flex items-center gap-1">
-                                <Brain className="w-3 h-3 text-indigo-400 shrink-0" />
-                                <span>Analyze Balance</span>
-                            </button>
-                            <button onClick={() => handleTriggerPrompt("Suggest a child joy task")} className="text-[9px] font-bold px-2.5 py-1 rounded-full border border-pink-500/20 bg-pink-500/[0.04] text-pink-300 hover:bg-pink-500/10 hover:border-pink-500/40 transition-all active:scale-95 whitespace-nowrap flex items-center gap-1">
-                                <Sparkles className="w-3 h-3 text-pink-400 shrink-0" />
-                                <span>Suggest Play Task</span>
-                            </button>
-                            <button onClick={() => handleTriggerPrompt("Propose a perfect plan")} className="text-[9px] font-bold px-2.5 py-1 rounded-full border border-purple-500/20 bg-purple-500/[0.04] text-purple-300 hover:bg-purple-500/10 hover:border-purple-500/40 transition-all active:scale-95 whitespace-nowrap flex items-center gap-1">
-                                <Calendar className="w-3 h-3 text-purple-400 shrink-0" />
-                                <span>Propose 24h Plan</span>
-                            </button>
-                            <button onClick={() => handleTriggerPrompt("Need a recovery rest break")} className="text-[9px] font-bold px-2.5 py-1 rounded-full border border-emerald-500/20 bg-emerald-500/[0.04] text-emerald-300 hover:bg-emerald-500/10 hover:border-emerald-500/40 transition-all active:scale-95 whitespace-nowrap flex items-center gap-1">
-                                <Coffee className="w-3 h-3 text-emerald-400 shrink-0" />
-                                <span>Recovery Break</span>
-                            </button>
-                        </div>
+                        {/* Quick Prompts Capsules Row - hidden once chat has messages */}
+                        {messages.length === 0 && (
+                            <div className="flex gap-2 items-center overflow-x-auto custom-scrollbar pb-2 max-w-3xl mx-auto pl-1">
+                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap mr-1">Prompts:</span>
+                                <button onClick={() => handleTriggerPrompt("Analyze my today's balance")} className="text-[9px] font-bold px-2.5 py-1 rounded-full border border-indigo-500/20 bg-indigo-500/[0.04] text-indigo-300 hover:bg-indigo-500/10 hover:border-indigo-500/40 transition-all active:scale-95 whitespace-nowrap flex items-center gap-1">
+                                    <Brain className="w-3 h-3 text-indigo-400 shrink-0" />
+                                    <span>Analyze Balance</span>
+                                </button>
+                                <button onClick={() => handleTriggerPrompt("Suggest a child joy task")} className="text-[9px] font-bold px-2.5 py-1 rounded-full border border-pink-500/20 bg-pink-500/[0.04] text-pink-300 hover:bg-pink-500/10 hover:border-pink-500/40 transition-all active:scale-95 whitespace-nowrap flex items-center gap-1">
+                                    <Sparkles className="w-3 h-3 text-pink-400 shrink-0" />
+                                    <span>Suggest Play Task</span>
+                                </button>
+                                <button onClick={() => handleTriggerPrompt("Propose a perfect plan")} className="text-[9px] font-bold px-2.5 py-1 rounded-full border border-purple-500/20 bg-purple-500/[0.04] text-purple-300 hover:bg-purple-500/10 hover:border-purple-500/40 transition-all active:scale-95 whitespace-nowrap flex items-center gap-1">
+                                    <Calendar className="w-3 h-3 text-purple-400 shrink-0" />
+                                    <span>Propose 24h Plan</span>
+                                </button>
+                                <button onClick={() => handleTriggerPrompt("Need a recovery rest break")} className="text-[9px] font-bold px-2.5 py-1 rounded-full border border-emerald-500/20 bg-emerald-500/[0.04] text-emerald-300 hover:bg-emerald-500/10 hover:border-emerald-500/40 transition-all active:scale-95 whitespace-nowrap flex items-center gap-1">
+                                    <Coffee className="w-3 h-3 text-emerald-400 shrink-0" />
+                                    <span>Recovery Break</span>
+                                </button>
+                            </div>
+                        )}
 
                         {/* Modern Chat Input Shell */}
                         <div className="relative max-w-3xl mx-auto group">

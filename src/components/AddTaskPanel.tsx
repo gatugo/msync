@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Plus, X, ChevronDown, Bot, Loader2, Sparkles, Brain, Coffee } from 'lucide-react';
 import { useStore } from '@/store/useStore';
-import { supabase } from '@/lib/supabase';
 import { TaskType } from '@/types';
 import TimePicker from './TimePicker';
 import DatePicker from './DatePicker';
@@ -111,26 +110,20 @@ export default function AddTaskPanel({ isOpen, onClose, onAdd }: AddTaskPanelPro
                 throw new Error('OFFLINE_MODE');
             }
 
-            // Capture Local Time context
             const now = new Date();
             const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
             const localTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 
-            const { data: { session } } = await supabase.auth.getSession();
-            const token = session?.access_token;
-
             const response = await fetch('/api/coach', {
                 method: 'POST',
-                headers: { 
+                headers: {
                     'Content-Type': 'application/json',
-                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
                 },
                 body: JSON.stringify({
                     mode: 'schedule_assist',
                     taskTitle: title.trim(),
                     localDate,
                     localTime,
-                    // Send tasks for conflict detection (simplified to save bandwidth/tokens)
                     tasks: tasks.map(t => ({
                         scheduledDate: t.scheduledDate,
                         scheduledTime: t.scheduledTime,

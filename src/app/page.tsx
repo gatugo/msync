@@ -1,8 +1,6 @@
 'use client';
 
 import { useState, useEffect, useSyncExternalStore, useRef } from 'react';
-import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
 import { useStore } from '@/store/useStore';
 import { useShallow } from 'zustand/react/shallow';
 import { TaskType, Task } from '@/types';
@@ -50,8 +48,6 @@ export default function Home() {
     tasks,
     history,
     goals,
-    isAuthenticated,
-    authError,
     addTask,
     updateTask,
     moveTask,
@@ -66,14 +62,11 @@ export default function Home() {
     exportData,
     importData,
     fetchInitialData,
-    checkAuth,
     _hasHydrated,
   } = useStore(useShallow((state) => ({
     tasks: state.tasks,
     history: state.history,
     goals: state.goals,
-    isAuthenticated: state.isAuthenticated,
-    authError: state.authError,
     addTask: state.addTask,
     updateTask: state.updateTask,
     moveTask: state.moveTask,
@@ -88,34 +81,12 @@ export default function Home() {
     exportData: state.exportData,
     importData: state.importData,
     fetchInitialData: state.fetchInitialData,
-    checkAuth: state.checkAuth,
     _hasHydrated: state._hasHydrated,
   })));
 
   // Hydration / Data Fetching
   useEffect(() => {
     fetchInitialData();
-  }, []);
-
-  // Listen for auth state changes
-  useEffect(() => {
-    if (typeof window !== 'undefined' && localStorage.getItem('mindsync_test_mode') === 'true') {
-        return;
-    }
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log('Auth state changed:', event, !!session);
-        if (session) {
-          // User logged in - fetch their data
-          fetchInitialData();
-        } else {
-          // User logged out - clear data
-          useStore.getState().resetStore();
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
   }, []);
 
   // Dropdown click-away listener
@@ -209,45 +180,6 @@ export default function Home() {
         <div className="text-slate-400 flex items-center gap-2">
           <Brain className="w-5 h-5 animate-pulse text-indigo-400" />
           Loading...
-        </div>
-      </div>
-    );
-  }
-
-  // Show login prompt if not authenticated
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-[#0f172a] flex flex-col items-center justify-center p-4">
-        <div className="max-w-md w-full space-y-6">
-          <div className="text-center">
-            <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-indigo-500 via-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/30">
-              <Brain className="w-10 h-10 text-white" />
-            </div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 text-transparent bg-clip-text mb-2">
-              MindSync
-            </h1>
-            <p className="text-slate-400 mb-8">Sync your mind. Find your flow.</p>
-          </div>
-
-          <div className="bg-slate-900 border border-white/10 rounded-2xl p-6 shadow-xl backdrop-blur-sm space-y-4">
-            <h2 className="text-xl font-semibold text-white mb-2">Sign in to continue</h2>
-            <p className="text-slate-400 text-sm">
-              Your tasks, goals, and progress are securely synced to your account.
-            </p>
-            <Link
-              href="/login"
-              className="block w-full text-center px-6 py-3 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white font-semibold rounded-xl hover:brightness-110 transition-all shadow-lg shadow-indigo-500/40"
-            >
-              Sign In / Sign Up
-            </Link>
-            {authError && (
-              <p className="text-red-400 text-sm mt-2">{authError}</p>
-            )}
-          </div>
-
-          <p className="text-center text-slate-500 text-xs">
-            Don't have an account? Signing up will create one automatically.
-          </p>
         </div>
       </div>
     );
@@ -500,6 +432,7 @@ export default function Home() {
             if (tab === 'coach') {
               setActiveCoachMode('advice');
             }
+            setShowGoals(false);
             setActiveTab(tab);
           }}
           isHidden={isNavbarHidden}
@@ -537,7 +470,8 @@ export default function Home() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-[100]" 
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[100]" 
               onClick={() => setShowGoals(false)} 
             />
             <GoalsPanel
@@ -550,6 +484,12 @@ export default function Home() {
                 setShowGoals(false);
                 setActiveCoachMode('chat');
                 setInitialCoachQuestion(`Please break down my goal '${goal.title}' into 3-4 smaller, manageable tasks spread across the next few days. Please use the ACTION: CREATE_TASK format for each.`);
+                setActiveTab('coach');
+              }}
+              onStart={(goal) => {
+                setShowGoals(false);
+                setActiveCoachMode('chat');
+                setInitialCoachQuestion(`I want to start working on my goal '${goal.title}'. Suggest 3-4 first tasks to get started, formatted as ACTION: CREATE_TASK blocks.`);
                 setActiveTab('coach');
               }}
               onClose={() => setShowGoals(false)}

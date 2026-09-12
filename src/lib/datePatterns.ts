@@ -42,60 +42,88 @@ export const parseNaturalDateTime = (input: string): ParsedDateTime => {
     }
 
     // 2. Extract Date
-    // a) M-D-YY or M-D-YYYY
-    const numericDateMatch = clean.match(/(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/);
-    // b) MMM D
-    const months = 'jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec';
-    const namedDateRegex = new RegExp(`(?:${months})[a-z]*\\s+(\\d{1,2})(?:st|nd|rd|th)?`, 'i');
-    const namedDateMatch = clean.match(namedDateRegex);
-
-    if (numericDateMatch) {
-        const m = parseInt(numericDateMatch[1]) - 1;
-        const d = parseInt(numericDateMatch[2]);
-        let y = parseInt(numericDateMatch[3]);
-        if (y < 100) y += 2000;
+    // a) ISO explicit date: YYYY-MM-DD
+    const isoDateMatch = clean.match(/\b(\d{4})-(\d{2})-(\d{2})\b/);
+    if (isoDateMatch) {
+        const y = parseInt(isoDateMatch[1], 10);
+        const m = parseInt(isoDateMatch[2], 10) - 1;
+        const d = parseInt(isoDateMatch[3], 10);
         targetDate = new Date(y, m, d);
-        clean = removePattern(clean, numericDateMatch[0]);
-        dateDetected = true;
-    } else if (namedDateMatch) {
-        const day = parseInt(namedDateMatch[1]);
-        const monthStr = namedDateMatch[0].toLowerCase().match(new RegExp(`(${months})`))![0];
-        const monthIndex = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].indexOf(monthStr.substring(0, 3));
-        targetDate.setMonth(monthIndex);
-        targetDate.setDate(day);
-
-        const oneMonthAgo = new Date();
-        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-        if (targetDate < oneMonthAgo) {
-            targetDate.setFullYear(targetDate.getFullYear() + 1);
-        }
-        clean = removePattern(clean, namedDateMatch[0]);
-        dateDetected = true;
-    } else if (clean.match(/\btomorrow\b/i)) {
-        targetDate.setDate(targetDate.getDate() + 1);
-        clean = removePattern(clean, /\btomorrow\b/i);
-        dateDetected = true;
-    } else if (clean.match(/\btoday\b/i)) {
-        // Just remove 'today', date is already now
-        clean = removePattern(clean, /\btoday\b/i);
-        dateDetected = true;
-    } else if (clean.match(/\bnext\s+week\b/i)) {
-        targetDate.setDate(targetDate.getDate() + 7);
-        clean = removePattern(clean, /\bnext\s+week\b/i);
+        clean = removePattern(clean, isoDateMatch[0]);
         dateDetected = true;
     } else {
-         const dayMatch = clean.match(/(?:this\s+|next\s+|on\s+)?\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i);
-         if (dayMatch) {
-            const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-            const targetDayName = dayMatch[1].toLowerCase();
-            const targetDayIndex = dayNames.indexOf(targetDayName);
-            const currentDayIndex = targetDate.getDay();
-            let daysToAdd = targetDayIndex - currentDayIndex;
-            if (daysToAdd <= 0) daysToAdd += 7;
-            targetDate.setDate(targetDate.getDate() + daysToAdd);
-            clean = removePattern(clean, dayMatch[0]);
+        // a) M-D-YY or M-D-YYYY
+        const numericDateMatch = clean.match(/(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})/);
+        // b) MMM D
+        const months = 'jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec';
+        const namedDateRegex = new RegExp(`(?:${months})[a-z]*\\s+(\\d{1,2})(?:st|nd|rd|th)?`, 'i');
+        const namedDateMatch = clean.match(namedDateRegex);
+
+        if (numericDateMatch) {
+            const rawFirst = parseInt(numericDateMatch[1], 10);
+            const rawSecond = parseInt(numericDateMatch[2], 10);
+            const rawThird = parseInt(numericDateMatch[3], 10);
+
+            let y: number;
+            let m: number;
+            let d: number;
+
+            if (numericDateMatch[1].length === 4) {
+                // YYYY/MM/DD or YYYY-MM-DD
+                y = rawFirst;
+                m = rawSecond - 1;
+                d = rawThird;
+            } else {
+                // MM/DD/YY or MM-DD-YYYY
+                m = rawFirst - 1;
+                d = rawSecond;
+                y = rawThird;
+                if (y < 100) y += 2000;
+            }
+
+            targetDate = new Date(y, m, d);
+            clean = removePattern(clean, numericDateMatch[0]);
             dateDetected = true;
-         }
+        } else if (namedDateMatch) {
+            const day = parseInt(namedDateMatch[1]);
+            const monthStr = namedDateMatch[0].toLowerCase().match(new RegExp(`(${months})`))![0];
+            const monthIndex = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].indexOf(monthStr.substring(0, 3));
+            targetDate.setMonth(monthIndex);
+            targetDate.setDate(day);
+
+            const oneMonthAgo = new Date();
+            oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+            if (targetDate < oneMonthAgo) {
+                targetDate.setFullYear(targetDate.getFullYear() + 1);
+            }
+            clean = removePattern(clean, namedDateMatch[0]);
+            dateDetected = true;
+        } else if (clean.match(/\btomorrow\b/i)) {
+            targetDate.setDate(targetDate.getDate() + 1);
+            clean = removePattern(clean, /\btomorrow\b/i);
+            dateDetected = true;
+        } else if (clean.match(/\btoday\b/i)) {
+            // Just remove 'today', date is already now
+            clean = removePattern(clean, /\btoday\b/i);
+            dateDetected = true;
+        } else if (clean.match(/\bnext\s+week\b/i)) {
+            targetDate.setDate(targetDate.getDate() + 7);
+            clean = removePattern(clean, /\bnext\s+week\b/i);
+            dateDetected = true;
+        } else {
+             const dayMatch = clean.match(/(?:this\s+|next\s+|on\s+)?\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i);
+             if (dayMatch) {
+                const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                const targetDayName = dayMatch[1].toLowerCase();
+                const targetDayIndex = dayNames.indexOf(targetDayName);
+                const currentDayIndex = targetDate.getDay();
+                let daysToAdd = targetDayIndex - currentDayIndex;
+                if (daysToAdd <= 0) daysToAdd += 7;
+                targetDate.setDate(targetDate.getDate() + daysToAdd);
+                clean = removePattern(clean, dayMatch[0]);
+                dateDetected = true;
+             }
+        }
     }
 
     // 3. Extract Time

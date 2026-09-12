@@ -1,13 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { supabase } from '@/lib/supabase';
-import Link from 'next/link';
 import { useStore } from '@/store/useStore';
-import { useRouter } from 'next/navigation';
 import TimePicker from './TimePicker';
-import { Database, FlaskConical, User, Key, Brain, CloudOff, ChevronDown, Shield, Bot, PowerOff, Layers, WifiOff, Moon, Gamepad2, Sparkles, Heart, Briefcase, XCircle, ChevronRight, Upload, Download, Trash2, AlertTriangle, ArrowDown, ArrowUp } from 'lucide-react';
+import { Database, FlaskConical, Brain, CloudOff, Shield, Bot, PowerOff, Layers, WifiOff, Moon, Gamepad2, Sparkles, Heart, Briefcase, XCircle, ChevronRight, Upload, Download, Trash2, AlertTriangle, ArrowDown, ArrowUp, Globe, Cpu, Key, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { db } from '@/lib/db';
 
 function DataLabIcon({ className = "w-6 h-6", isLarge = false }: { className?: string; isLarge?: boolean }) {
     return (
@@ -38,13 +36,14 @@ interface SettingsTabProps {
 }
 
 export default function SettingsTab({ handleImport, handleExport, onScrollDirectionChange }: SettingsTabProps) {
-    const [user, setUser] = useState<any>(null);
     const [showDataModal, setShowDataModal] = useState(false);
-    const router = useRouter();
     const { preferences, updatePreferences, resetStore, clearAllData } = useStore();
 
     const [tempPrefs, setTempPrefs] = useState(preferences);
     const [isPersonalizationOpen, setIsPersonalizationOpen] = useState(false);
+    const [stepfunConfig, setStepfunConfig] = useState(db.getStepFunConfig());
+    const [isStepFunOpen, setIsStepFunOpen] = useState(false);
+    const [stepfunSaved, setStepfunSaved] = useState(false);
 
     const lastScrollTopRef = useRef<number>(0);
 
@@ -72,25 +71,10 @@ export default function SettingsTab({ handleImport, handleExport, onScrollDirect
         lastScrollTopRef.current = scrollTop;
     };
 
-    useEffect(() => {
-        const getUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            setUser(user);
-        };
-        getUser();
-    }, []);
-
     // Keep tempPrefs in sync with store when it hydrates
     useEffect(() => {
         setTempPrefs(preferences);
     }, [preferences]);
-
-    const handleLogout = async () => {
-        await supabase.auth.signOut();
-        resetStore();
-        setUser(null);
-        router.refresh();
-    };
 
     const handleSavePrefs = () => {
         updatePreferences(tempPrefs);
@@ -111,6 +95,12 @@ export default function SettingsTab({ handleImport, handleExport, onScrollDirect
         }));
     };
 
+    const handleSaveStepFun = () => {
+        db.saveStepFunConfig(stepfunConfig);
+        setStepfunSaved(true);
+        setTimeout(() => setStepfunSaved(false), 2000);
+    };
+
     return (
         <div 
             onScroll={handleScroll}
@@ -121,55 +111,124 @@ export default function SettingsTab({ handleImport, handleExport, onScrollDirect
                     <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Settings</h2>
                 </div>
 
-            {/* Account Panel (Premium Hub Look) */}
-            <div className="bg-white/50 dark:bg-slate-900/40 backdrop-blur-2xl p-6 rounded-2xl relative overflow-hidden group border border-slate-200/50 dark:border-white/10 shadow-xl shadow-indigo-500/5 glow-card-hover">
-                <div className="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 opacity-30" />
+            {/* StepFun Configuration Panel */}
+            <div className={`bg-white/50 dark:bg-slate-900/40 backdrop-blur-2xl rounded-2xl overflow-hidden transition-all duration-500 border border-slate-200/50 dark:border-white/10 glow-card-hover ${isStepFunOpen ? 'shadow-2xl shadow-indigo-500/10' : ''}`}>
+                <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setIsStepFunOpen(!isStepFunOpen)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setIsStepFunOpen(!isStepFunOpen);
+                        }
+                    }}
+                    className="w-full flex items-center justify-between p-5 hover:bg-slate-50 dark:hover:bg-white/5 transition-all cursor-pointer select-none"
+                >
+                    <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 shadow-lg ${isStepFunOpen ? 'bg-indigo-500 text-white shadow-indigo-500/40 rotate-[360deg]' : 'bg-indigo-500/10 text-indigo-500'}`}>
+                            <Bot className="w-6 h-6" />
+                        </div>
+                        <div className="text-left">
+                            <h3 className="font-bold text-slate-900 dark:text-white tracking-tight">StepFun AI Configuration</h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Connect your own StepFun API key for AI-powered coaching</p>
+                        </div>
+                    </div>
 
-                {user ? (
-                    <div className="space-y-6 relative">
-                        <div className="flex items-center gap-4">
-                            <div className="relative">
-                                <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-2xl blur-[6px] opacity-40 group-hover:opacity-60 group-hover:scale-110 transition-all duration-500 animate-pulse" />
-                                <div className="relative w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-600 flex items-center justify-center text-white font-black text-2xl shadow-xl transition-transform group-hover:scale-105 duration-300 border border-white/20">
-                                    {user.email?.[0].toUpperCase()}
-                                </div>
+                    <div className="flex items-center gap-3">
+                        {stepfunConfig.apiKey && (
+                            <div className="hidden xs:flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-500 uppercase tracking-widest">
+                                    Connected
+                                </span>
                             </div>
-                            <div className="flex-1 min-w-0">
-                                <h3 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">Active Member</h3>
-                                <p className="text-sm text-slate-500 dark:text-slate-400 truncate font-medium">{user.email}</p>
-                                <div className="mt-1 inline-flex items-center gap-1.5 px-2 py-0.5 bg-green-500/10 border border-green-500/20 rounded-md">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                                    <span className="text-[9px] font-black text-green-500 uppercase tracking-widest">Synced</span>
-                                </div>
-                            </div>
-                        </div>
-                        <button
-                            onClick={handleLogout}
-                            className="w-full py-3 bg-slate-50 dark:bg-white/[0.02] hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/20 text-slate-600 dark:text-slate-400 rounded-xl transition-all font-bold text-xs uppercase tracking-widest border border-slate-200 dark:border-white/10 shadow-sm"
-                        >
-                            Log Out Session
-                        </button>
+                        )}
+                        <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform duration-500 ${isStepFunOpen ? 'rotate-180' : ''}`} />
                     </div>
-                ) : (
-                    <div className="text-center space-y-5 relative py-2">
-                        <div className="w-20 h-20 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 rounded-3xl mx-auto flex items-center justify-center shadow-inner relative group-hover:rotate-3 transition-transform duration-500">
-                            <User className="text-slate-400 dark:text-slate-600 w-12 h-12" />
-                            <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-amber-500 rounded-xl border-4 border-white dark:border-[#0f172a] flex items-center justify-center text-white">
-                                <Key className="w-4 h-4" />
+                </div>
+
+                <div className={`transition-[max-height,opacity] duration-500 ease-in-out ${isStepFunOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                    <div className="p-6 pt-0 border-t border-slate-200/50 dark:border-white/5 space-y-6">
+                        <div className="mt-5 p-4 bg-indigo-500/[0.03] dark:bg-indigo-500/[0.03] border border-indigo-500/20 rounded-2xl flex gap-4 items-center">
+                            <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center flex-shrink-0">
+                                <Shield className="w-5 h-5 text-indigo-500" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400">Local Configuration</p>
+                                <p className="text-[10px] text-slate-500 dark:text-indigo-200/50 leading-relaxed font-medium">
+                                    Your API key is stored locally in this browser only. It is never sent to any server except StepFun&apos;s API.
+                                </p>
                             </div>
                         </div>
-                        <div>
-                            <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Guest Profile</h3>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 max-w-[200px] mx-auto leading-relaxed font-medium">Connect an account to enable multi-device sync and cloud backups.</p>
+
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <label className="flex items-center gap-2 text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+                                    <Key className="w-4 h-4 text-indigo-400" />
+                                    API Key
+                                </label>
+                                <input
+                                    type="password"
+                                    value={stepfunConfig.apiKey}
+                                    onChange={(e) => setStepfunConfig(prev => ({ ...prev, apiKey: e.target.value }))}
+                                    placeholder="sk-..."
+                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-black/10 border border-slate-200 dark:border-white/5 rounded-2xl text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 font-mono focus:outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="flex items-center gap-2 text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+                                    <Globe className="w-4 h-4 text-indigo-400" />
+                                    Base URL
+                                </label>
+                                <select
+                                    value={stepfunConfig.baseUrl}
+                                    onChange={(e) => setStepfunConfig(prev => ({ ...prev, baseUrl: e.target.value }))}
+                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-black/10 border border-slate-200 dark:border-white/5 rounded-2xl text-sm text-slate-900 dark:text-white font-mono focus:outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                                >
+                                    <option value="https://api.stepfun.ai/v1">Standard API (https://api.stepfun.ai/v1)</option>
+                                    <option value="https://api.stepfun.ai/step_plan/v1">Step Plan API (https://api.stepfun.ai/step_plan/v1)</option>
+                                </select>
+                                <input
+                                    type="text"
+                                    value={stepfunConfig.baseUrl}
+                                    onChange={(e) => setStepfunConfig(prev => ({ ...prev, baseUrl: e.target.value }))}
+                                    placeholder="https://api.stepfun.ai/v1"
+                                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-black/10 border border-slate-200 dark:border-white/5 rounded-xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 font-mono focus:outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="flex items-center gap-2 text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+                                    <Cpu className="w-4 h-4 text-indigo-400" />
+                                    Model
+                                </label>
+                                <select
+                                    value={stepfunConfig.model}
+                                    onChange={(e) => setStepfunConfig(prev => ({ ...prev, model: e.target.value }))}
+                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-black/10 border border-slate-200 dark:border-white/5 rounded-2xl text-sm text-slate-900 dark:text-white font-mono focus:outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                                >
+                                    <option value="step-3.7-flash">step-3.7-flash (flagship reasoning)</option>
+                                    <option value="step-3.5-flash">step-3.5-flash (high-speed)</option>
+                                    <option value="step-3.5-flash-2603">step-3.5-flash-2603 (agent-optimized)</option>
+                                </select>
+                            </div>
                         </div>
-                        <Link
-                            href="/login"
-                            className="inline-block w-full py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:brightness-110 text-white rounded-xl transition-all font-bold text-sm shadow-xl shadow-indigo-500/30 active:scale-[0.98]"
-                        >
-                            Sign In / Get Started
-                        </Link>
+
+                        <div className="flex items-center justify-between pt-2">
+                            <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                                {stepfunConfig.apiKey ? 'API key configured locally' : 'No API key configured'}
+                            </div>
+                            <button
+                                onClick={handleSaveStepFun}
+                                className="px-6 py-2.5 bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-500/30 hover:bg-indigo-600 transition-all font-bold text-xs uppercase tracking-widest active:scale-95"
+                            >
+                                {stepfunSaved ? 'Saved!' : 'Save Config'}
+                            </button>
+                        </div>
                     </div>
-                )}
+                </div>
             </div>
 
             {/* Brain Personalization (Glass Accordion) */}
@@ -209,7 +268,7 @@ export default function SettingsTab({ handleImport, handleExport, onScrollDirect
                             </button>
                         )}
 
-                        {!user && (
+                        {!stepfunConfig.apiKey && (
                             <div className="hidden xs:flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
                                 <CloudOff className="w-3.5 h-3.5 text-amber-500" />
                                 <span className="text-[9px] font-black text-amber-600 dark:text-amber-500 uppercase tracking-widest">
@@ -224,17 +283,16 @@ export default function SettingsTab({ handleImport, handleExport, onScrollDirect
 
                 <div className={`transition-[max-height,opacity] duration-500 ease-in-out ${isPersonalizationOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
                     <div className="p-6 pt-0 border-t border-slate-200/50 dark:border-white/5 space-y-8">
-
-                        {/* Guest Warning */}
-                        {!user && (
+                        {/* Offline Notice */}
+                        {!stepfunConfig.apiKey && (
                             <div className="mt-5 p-4 bg-indigo-500/[0.03] dark:bg-amber-500/[0.03] border border-amber-500/20 rounded-2xl flex gap-4 items-center">
                                 <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center flex-shrink-0">
                                     <Shield className="w-5 h-5 text-amber-500" />
                                 </div>
                                 <div>
-                                    <p className="text-xs font-bold text-amber-600 dark:text-amber-400">Offline Personalization</p>
+                                    <p className="text-xs font-bold text-amber-600 dark:text-amber-400">Offline Mode</p>
                                     <p className="text-[10px] text-slate-500 dark:text-amber-200/50 leading-relaxed font-medium">
-                                        Data is stored in this browser session. <Link href="/login" className="text-amber-500 underline decoration-amber-500/30 underline-offset-4 hover:decoration-amber-500 transition-all font-bold">Sign in</Link> to secure your cloud brain.
+                                        Add a StepFun API key above to unlock AI-powered coaching. Until then, MindSync uses built-in Smart Logic.
                                     </p>
                                 </div>
                             </div>
@@ -245,8 +303,8 @@ export default function SettingsTab({ handleImport, handleExport, onScrollDirect
                         <div className="flex flex-col gap-3">
                             <div className="flex items-center justify-between p-5 bg-white/5 dark:bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-slate-200 dark:border-white/10 shadow-lg">
                                 <div className="flex items-center gap-4">
-                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-500 ${tempPrefs.aiEnabled ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-xl shadow-indigo-500/30 ring-2 ring-indigo-500/20' : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 ring-1 ring-slate-300 dark:ring-white/5'}`}>
-                                        {tempPrefs.aiEnabled ? (
+                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-500 ${tempPrefs.aiEnabled && stepfunConfig.apiKey ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-xl shadow-indigo-500/30 ring-2 ring-indigo-500/20' : 'bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 ring-1 ring-slate-300 dark:ring-white/5'}`}>
+                                        {tempPrefs.aiEnabled && stepfunConfig.apiKey ? (
                                             <Bot className="w-6 h-6" />
                                         ) : (
                                             <PowerOff className="w-6 h-6" />
@@ -255,10 +313,10 @@ export default function SettingsTab({ handleImport, handleExport, onScrollDirect
                                     <div>
                                         <p className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                                             Enable AI Intelligence
-                                            {tempPrefs.aiEnabled && <span className="flex w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />}
+                                            {tempPrefs.aiEnabled && stepfunConfig.apiKey && <span className="flex w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />}
                                         </p>
                                         <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                                            {tempPrefs.aiEnabled ? 'Using AI for advanced insight' : 'Using Local Smart Logic only'}
+                                            {tempPrefs.aiEnabled && stepfunConfig.apiKey ? 'Using StepFun for advanced insight' : 'Using Local Smart Logic only'}
                                         </p>
                                     </div>
                                 </div>
@@ -271,7 +329,7 @@ export default function SettingsTab({ handleImport, handleExport, onScrollDirect
                             </div>
 
                             {/* Auto Arrange Toggle */}
-                            <div className={`flex items-center justify-between p-4 bg-white/5 dark:bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-slate-200 dark:border-white/5 transition-all ${tempPrefs.aiEnabled ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+                            <div className={`flex items-center justify-between p-4 bg-white/5 dark:bg-slate-900/40 backdrop-blur-xl rounded-2xl border border-slate-200 dark:border-white/5 transition-all ${tempPrefs.aiEnabled && stepfunConfig.apiKey ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
                                 <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-indigo-500/10 text-indigo-400">
                                         <Layers className="w-5 h-5" />
@@ -399,13 +457,9 @@ export default function SettingsTab({ handleImport, handleExport, onScrollDirect
                         </div>
                         <div className="text-left">
                             <h3 className="font-bold text-slate-900 dark:text-white tracking-tight">Data Management</h3>
-                            {!user ? (
-                                <div className="flex items-center gap-1.5 mt-0.5">
-                                    <span className="text-[9px] text-amber-500 font-black uppercase tracking-widest px-2 py-0.5 bg-amber-500/10 rounded-full border border-amber-500/20">Backup Required</span>
-                                </div>
-                            ) : (
-                                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Export or restore your cloud brain</p>
-                            )}
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-[9px] text-amber-500 font-black uppercase tracking-widest px-2 py-0.5 bg-amber-500/10 rounded-full border border-amber-500/20">Local Only</span>
+                            </div>
                         </div>
                     </div>
                     <div className="w-10 h-10 rounded-full flex items-center justify-center group-hover:bg-slate-100 dark:group-hover:bg-white/5 transition-all">

@@ -128,9 +128,20 @@ CRITICAL: Only output '[ACTION: CREATE_TASK ...]' blocks if the user explicitly 
 If the user is just asking for general advice or diagnostics, do NOT output any action blocks. Instead, at the very end of your response, add a short, actionable prompt like: *"Reply 'apply these fixes' or 'apply step 1' to add these to your timeline."*
 If the user asks to apply a specific step from a previous message (e.g., "apply step 1"), look at the conversation history, identify exactly what task that step refers to, and output ONLY the action block for that specific task.
 
+SCHEDULING RULES:
+1. If the user mentions "today", use today's date: ${currentDateKey}
+2. If the user mentions "tomorrow", calculate tomorrow's date and use it.
+3. If the user mentions a specific date like "9/10/2026", use that exact date.
+4. If the user mentions a specific time like "7pm" or "19:00", use EXACTLY that time in 24-hour format.
+5. NEVER change the user's requested date or time to something else. The user's requested date/time is authoritative.
+6. When creating action blocks, the ScheduledDate and ScheduledTime MUST match the user's explicit request.
+
+Example: If user says "Schedule gym tomorrow at 7pm for 1 hour", output:
+[ACTION: CREATE_TASK | Gym | ADULT | 60 | 2026-09-10 | 19:00]
+
 // ACTION BLOCK FORMAT (Only suggest when explicitly asked to schedule/plan/add):
 // [ACTION: CREATE_TASK | Title | Type (ADULT/CHILD/REST) | Duration in minutes | ScheduledDate (YYYY-MM-DD) | ScheduledTime (HH:MM)]
-// IMPORTANT: Use 24-hour format for ScheduledTime (e.g., "17:00"). Use YYYY-MM-DD for dates. Action blocks must be strictly formatted.`; 
+// IMPORTANT: Use 24-hour format for ScheduledTime (e.g., "19:00" for 7pm). Use YYYY-MM-DD for dates. Action blocks must be strictly formatted.`;
         }
         case 'summary': {
             const interval = summaryInterval || 'weekly';
@@ -326,14 +337,17 @@ export function parseCoachResponse(text: string): { cleanText: string; actions: 
             }
 
             if (!isTemplate && !isDuplicate) {
-                const taskType = parts[1].toUpperCase() as Task['type'];
+                const taskType = parts[1]?.toUpperCase();
+                const safeType = ['ADULT', 'CHILD', 'REST'].includes(taskType || '') ? taskType : 'ADULT';
+                const safeDate = parts.length >= 5 ? parts[3] : undefined;
+                const safeTime = schedTime;
                 actions.push({
                     type: 'CREATE_TASK',
-                    title: parts[0],
-                    taskType: ['ADULT', 'CHILD', 'REST'].includes(taskType) ? taskType : 'ADULT',
+                    title: parts[0] || 'Untitled',
+                    taskType: safeType,
                     duration: parseInt(parts[2]) || 30,
-                    scheduledDate: parts.length >= 5 ? parts[3] : undefined,
-                    scheduledTime: schedTime,
+                    scheduledDate: safeDate,
+                    scheduledTime: safeTime,
                     projectedScore,
                 });
             }

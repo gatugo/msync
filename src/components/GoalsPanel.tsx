@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Goal } from '@/types';
 import { motion } from 'framer-motion';
-import { Target, Plus, X, Edit2, Calendar, Clock, Sparkles, Check, Trophy, Undo2, Trash2 } from 'lucide-react';
+import { Target, Plus, X, Edit2, Calendar, Clock, Sparkles, Check, Trophy, Undo2, Trash2, Play } from 'lucide-react';
 import DatePicker from './DatePicker';
 import TimePicker from './TimePicker';
 
@@ -14,6 +14,7 @@ interface GoalsPanelProps {
     onToggleGoal: (goalId: string) => void;
     onDeleteGoal: (goalId: string) => void;
     onBreakdown?: (goal: Goal) => void;
+    onStart?: (goal: Goal) => void;
     onClose: () => void;
 }
 
@@ -24,6 +25,7 @@ export default function GoalsPanel({
     onToggleGoal,
     onDeleteGoal,
     onBreakdown,
+    onStart,
     onClose,
 }: GoalsPanelProps) {
     const [isAdding, setIsAdding] = useState(false);
@@ -91,6 +93,16 @@ export default function GoalsPanel({
         }
     };
 
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                onClose();
+            }
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
+
     return (
         <motion.div
             initial={{ y: '100%', opacity: 0.8 }}
@@ -130,49 +142,48 @@ export default function GoalsPanel({
             </div>
 
             {/* Add Goal Form */}
-            {isAdding && (
-                <form onSubmit={handleSubmit} className="mb-6 p-5 bg-indigo-500/5 dark:bg-indigo-500/5 rounded-2xl border border-indigo-500/20 space-y-4 animate-in fade-in slide-in-from-top-2">
-                    <div className="relative">
-                        <Edit2 className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400 w-4 h-4" />
-                        <input
-                            type="text"
-                            value={newTitle}
-                            onChange={(e) => setNewTitle(e.target.value)}
-                            placeholder="What is your goal?"
-                            className="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-xl py-3 pl-10 pr-4 text-sm focus:ring-2 focus:ring-indigo-500 dark:text-white transition-all"
-                            autoFocus
-                        />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        <DatePicker
-                            value={newDate}
-                            onChange={setNewDate}
-                            placeholder="Date"
-                        />
-                        <TimePicker
-                            value={newTime}
-                            onChange={setNewTime}
-                            placeholder="Time"
-                        />
-                    </div>
-                    <div className="flex gap-3 pt-2">
-                        <button
-                            type="button"
-                            onClick={() => setIsAdding(false)}
-                            className="flex-1 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={!newTitle.trim() || !newDate}
-                            className="flex-[2] py-3 rounded-xl bg-indigo-500 text-white text-sm font-bold shadow-lg shadow-indigo-500/25 hover:bg-indigo-600 transition-all disabled:opacity-50 disabled:shadow-none"
-                        >
-                            Start Journey
-                        </button>
-                    </div>
-                </form>
-            )}
+            <form onSubmit={handleSubmit} className={`mb-6 p-5 bg-indigo-500/5 dark:bg-indigo-500/5 rounded-2xl border border-indigo-500/20 space-y-4 transition-all duration-200 ${isAdding ? 'opacity-100 max-h-[500px]' : 'opacity-0 max-h-0 overflow-hidden pointer-events-none'}`}>
+                <div className="relative">
+                    <Edit2 className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400 w-4 h-4" />
+                    <input
+                        type="text"
+                        value={newTitle}
+                        onChange={(e) => setNewTitle(e.target.value)}
+                        placeholder="What is your goal?"
+                        className="w-full bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/5 rounded-xl py-3 pl-10 pr-4 text-sm focus:ring-2 focus:ring-indigo-500 dark:text-white transition-all"
+                        autoFocus
+                        disabled={!isAdding}
+                    />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                    <DatePicker
+                        value={newDate}
+                        onChange={setNewDate}
+                        placeholder="Date"
+                    />
+                    <TimePicker
+                        value={newTime}
+                        onChange={setNewTime}
+                        placeholder="Time"
+                    />
+                </div>
+                <div className="flex gap-3 pt-2">
+                    <button
+                        type="button"
+                        onClick={() => setIsAdding(false)}
+                        className="flex-1 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-sm font-medium hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        disabled={!newTitle.trim() || !newDate || !isAdding}
+                        className="flex-[2] py-3 rounded-xl bg-indigo-500 text-white text-sm font-bold shadow-lg shadow-indigo-500/25 hover:bg-indigo-600 transition-all disabled:opacity-50 disabled:shadow-none"
+                    >
+                        Start Journey
+                    </button>
+                </div>
+            </form>
 
             {/* Goals List */}
             <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar pr-1 pb-32">
@@ -276,6 +287,16 @@ export default function GoalsPanel({
                                             data-testid="breakdown-btn"
                                         >
                                             <Sparkles className="w-5 h-5 group-hover/breakdown:rotate-12 transition-transform" />
+                                        </button>
+                                    )}
+                                    {onStart && (
+                                        <button
+                                            onClick={() => onStart(goal)}
+                                            className="w-12 h-12 flex items-center justify-center rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500 hover:text-white transition-all shadow-sm border border-emerald-500/20 hover:border-emerald-400 group/start"
+                                            title="Start goal"
+                                            aria-label="Start goal"
+                                        >
+                                            <Play className="w-5 h-5 group-hover/start:scale-110 transition-transform" />
                                         </button>
                                     )}
                                     <button

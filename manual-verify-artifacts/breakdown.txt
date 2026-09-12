@@ -1,0 +1,87 @@
+AI Coach
+SMART LOGIC
+BALANCE
+50
+•
+NEUTRAL
+ADVICE
+CHAT
+SUMMARY
+PREDICT PLAN
+DAILY RECAP
+
+Please break down my goal 'Launch website' into 3-4 smaller, manageable tasks spread across the next few days. Please use the ACTION: CREATE_TASK format for each.
+
+[OFFLINE MODE]
+
+I've prepared a starter plan for Launch website. Here are the first tasks to build momentum:
+
+Research: Launch website (ADULT, 30m)
+Plan: Launch website (ADULT, 30m)
+Execute: Launch website (ADULT, 60m)
+Review: Launch website (CHILD, 30m)
+
+Click 'Add to Timeline' below to commit these tasks to your day.
+
+Research: Launch website
+ADULT
+30m
+• 9:00 AM
+ADD TO TIMELINE
+SUGGEST ANOTHER
+Plan: Launch website
+ADULT
+30m
+• 10:00 AM
+ADD TO TIMELINE
+SUGGEST ANOTHER
+Execute: Launch website
+ADULT
+60m
+• 2:00 PM
+ADD TO TIMELINE
+SUGGEST ANOTHER
+Review: Launch website
+CHILD
+30m
+• 6:00 PM
+ADD TO TIMELINE
+SUGGEST ANOTHER
+
+Please break down my goal 'Launch website' into 3-4 smaller, manageable tasks spread across the next few days. Please use the ACTION: CREATE_TASK format for each.
+
+[OFFLINE MODE]
+
+I've prepared a starter plan for Launch website. Here are the first tasks to build momentum:
+
+Research: Launch website (ADULT, 30m)
+Plan: Launch website (ADULT, 30m)
+Execute: Launch website (ADULT, 60m)
+Review: Launch website (CHILD, 30m)
+
+Click 'Add to Timeline' below to commit these tasks to your day.
+
+Research: Launch website
+ADULT
+30m
+• 9:00 AM
+ADD TO TIMELINE
+SUGGEST ANOTHER
+Plan: Launch website
+ADULT
+30m
+• 10:00 AM
+ADD TO TIMELINE
+SUGGEST ANOTHER
+Execute: Launch website
+ADULT
+60m
+• 2:00 PM
+ADD TO TIMELINE
+SUGGEST ANOTHER
+Review: Launch website
+CHILD
+30m
+• 6:00 PM
+ADD TO TIMELINE
+SUGGEST ANOTHER

@@ -1,0 +1,16 @@
+# keep the build context small and reproducible
+node_modules
+.next
+.git
+legacy
+demo
+.stepcode
+.kilo
+.vscode
+pb_data
+pb_migrations
+*.log
+.env*.local
+Dockerfile
+docker-compose.yml
+.dockerignore

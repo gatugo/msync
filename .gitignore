@@ -55,3 +55,8 @@ docs/demo/
 # Scratch & Test Debug
 scratch/
 test-*.png
+
+# local backups (not for commit)
+legacy/
+pb_data/
+pb_migrations/

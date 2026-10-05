@@ -189,19 +189,15 @@ export default function GoalsPanel({
             <div className="flex-1 overflow-y-auto space-y-4 custom-scrollbar pr-1 pb-32">
                 {activeGoals.length === 0 && !isAdding && (
                     <div className="flex flex-col items-center justify-start pt-2 md:pt-3 p-6 text-center animate-in fade-in zoom-in-95 duration-1000">
-                        <div className="relative mb-5 group">
-                            <div className="absolute inset-0 bg-indigo-500/20 blur-3xl rounded-full scale-150 group-hover:bg-indigo-500/30 transition-all duration-700" />
-                            <img 
-                                src="/empty_goals_premium_1780024512227.png" 
-                                alt="No goals" 
-                                className="w-32 h-32 md:w-40 md:h-40 object-contain relative z-10 drop-shadow-2xl grayscale-[0.2] hover:grayscale-0 transition-all duration-500"
-                            />
+                        <div className="relative mb-5">
+                            <div className="absolute inset-0 bg-indigo-500/20 blur-3xl rounded-full scale-150" />
+                            <div className="relative z-10 text-4xl font-black text-indigo-500/80">🎯</div>
                         </div>
                         <h4 className="text-xl font-bold dark:text-white text-slate-900 mb-2 tracking-tight">Your Horizon is Clear</h4>
                         <p className="text-sm text-slate-500 dark:text-slate-400 max-w-[280px] leading-relaxed font-medium">
                             Goals give the Adult brain direction and the Child brain purpose. What's your next peak?
                         </p>
-                        <button 
+                        <button
                             onClick={() => setIsAdding(true)}
                             className="mt-4 px-8 py-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-indigo-500/20 hover:shadow-indigo-500/40 transition-all active:scale-95 flex items-center gap-2"
                         >

@@ -1,5 +1,6 @@
 'use client';
 
+import { isoToLocalDateKey } from '@/lib/localDate';
 import { useState, useEffect, useSyncExternalStore, useRef } from 'react';
 import { useStore } from '@/store/useStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -118,7 +119,7 @@ export default function Home() {
   })();
 
   const todayTasks = tasks.filter((t) => {
-    const isCompletedToday = t.status === 'DONE' && t.completedAt?.startsWith(todayStr);
+    const isCompletedToday = t.status === 'DONE' && isoToLocalDateKey(t.completedAt) === todayStr;
     const isScheduledToday = t.scheduledDate === todayStr;
     return isCompletedToday || isScheduledToday;
   });

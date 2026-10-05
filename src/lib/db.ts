@@ -7,6 +7,7 @@ const STORAGE_KEYS = {
   aiMemory: 'mindsync_ai_memory',
   learnedPatterns: 'mindsync_learned_patterns',
   preferences: 'mindsync_preferences',
+  syncDeletions: 'mindsync_sync_deletions',
   stepfunConfig: 'mindsync_stepfun_config',
 };
 
@@ -51,6 +52,53 @@ function read<T>(key: string, fallback: T): T {
 function write<T>(key: string, value: T) {
   if (typeof window === 'undefined') return;
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+// --- sync: deletion tombstones (see src/lib/sync.ts) ---
+export type SyncEntity = 'tasks' | 'goals' | 'snapshots' | 'memories' | 'patterns' | 'settings';
+
+export interface DeletionQueueItem {
+  entity: SyncEntity;
+  appId: string;
+  deletedAt: string;
+}
+
+let deletionsSuppressed = false;
+
+/** Wraps remote-deletion application so pulled deletions don't re-enqueue locally. */
+export function withDeletionsSuppressed<T>(fn: () => T): T {
+  const prev = deletionsSuppressed;
+  deletionsSuppressed = true;
+  try {
+    return fn();
+  } finally {
+    deletionsSuppressed = prev;
+  }
+}
+
+const getDeletionQueue = (): DeletionQueueItem[] =>
+  read<DeletionQueueItem[]>(STORAGE_KEYS.syncDeletions, []);
+
+/** Removes one flushed tombstone so a partial push is never re-sent wholesale. */
+const removeDeletion = (entity: SyncEntity, appId: string) => {
+  const queue = getDeletionQueue().filter((t) => !(t.entity === entity && t.appId === appId));
+  write(STORAGE_KEYS.syncDeletions, queue);
+};
+
+/** Called by every local delete; dedupes and keeps the queue bounded. */
+const queueDeletion = (entity: DeletionQueueItem['entity'], appId: string) => {
+  if (deletionsSuppressed || typeof window === 'undefined') return;
+  const queue = getDeletionQueue();
+  if (queue.some((t) => t.entity === entity && t.appId === appId)) return;
+  queue.push({ entity, appId, deletedAt: new Date().toISOString() });
+  write(STORAGE_KEYS.syncDeletions, queue.slice(-500));
+};
+
+/** Stamps updatedAt only when absent, so sync pull writes keep remote timestamps. */
+function stampUpdatedAt<T extends object>(record: T): T & { updatedAt: string } {
+  const r = record as T & { updatedAt?: string };
+  if (r.updatedAt) return r as T & { updatedAt: string };
+  return { ...r, updatedAt: new Date().toISOString() };
 }
 
 function sortTasks(tasks: Task[]): Task[] {
@@ -100,61 +148,86 @@ export const db = {
   getTasks: (): Task[] => sortTasks(read<Task[]>(STORAGE_KEYS.tasks, [])),
   saveTask: (task: Task) => {
     const tasks = db.getTasks();
+    const stamped = stampUpdatedAt(task);
     const idx = tasks.findIndex((t) => t.id === task.id);
-    if (idx >= 0) tasks[idx] = task;
-    else tasks.push(task);
+    if (idx >= 0) tasks[idx] = stamped;
+    else tasks.push(stamped);
     write(STORAGE_KEYS.tasks, sortTasks(tasks));
   },
   deleteTask: (id: string) => {
     const tasks = db.getTasks().filter((t) => t.id !== id);
     write(STORAGE_KEYS.tasks, tasks);
+    queueDeletion('tasks', id);
   },
 
   // Goals
   getGoals: (): Goal[] => sortGoals(read<Goal[]>(STORAGE_KEYS.goals, [])),
   saveGoal: (goal: Goal) => {
     const goals = db.getGoals();
+    const stamped = stampUpdatedAt(goal);
     const idx = goals.findIndex((g) => g.id === goal.id);
-    if (idx >= 0) goals[idx] = goal;
-    else goals.push(goal);
+    if (idx >= 0) goals[idx] = stamped;
+    else goals.push(stamped);
     write(STORAGE_KEYS.goals, sortGoals(goals));
   },
   deleteGoal: (id: string) => {
     const goals = db.getGoals().filter((g) => g.id !== id);
     write(STORAGE_KEYS.goals, goals);
+    queueDeletion('goals', id);
   },
 
   // History
   getHistory: (): DailySnapshot[] => sortHistory(read<DailySnapshot[]>(STORAGE_KEYS.history, [])),
   saveSnapshot: (snapshot: DailySnapshot) => {
     const history = db.getHistory();
+    const stamped = stampUpdatedAt(snapshot);
     const idx = history.findIndex((h) => h.date === snapshot.date);
-    if (idx >= 0) history[idx] = snapshot;
-    else history.push(snapshot);
+    if (idx >= 0) history[idx] = stamped;
+    else history.push(stamped);
     write(STORAGE_KEYS.history, sortHistory(history));
+  },
+  deleteSnapshot: (date: string) => {
+    write(STORAGE_KEYS.history, db.getHistory().filter((h) => h.date !== date));
+    queueDeletion('snapshots', date);
   },
 
   // AI Memory
   getAiMemory: (): AIMemory[] => read<AIMemory[]>(STORAGE_KEYS.aiMemory, []),
   addAiMemory: (memory: AIMemory) => {
     const memories = db.getAiMemory();
-    memories.push(memory);
+    memories.push(stampUpdatedAt(memory));
     write(STORAGE_KEYS.aiMemory, memories);
+  },
+  deleteAiMemory: (id: string) => {
+    write(STORAGE_KEYS.aiMemory, db.getAiMemory().filter((m) => m.id !== id));
+    queueDeletion('memories', id);
   },
 
   // Learned Patterns
   getLearnedPatterns: (): LearnedPattern[] => read<LearnedPattern[]>(STORAGE_KEYS.learnedPatterns, []),
   addLearnedPattern: (pattern: LearnedPattern) => {
     const patterns = db.getLearnedPatterns();
-    patterns.push(pattern);
+    patterns.push(stampUpdatedAt(pattern));
     write(STORAGE_KEYS.learnedPatterns, patterns);
+  },
+  deleteLearnedPattern: (id: string) => {
+    write(STORAGE_KEYS.learnedPatterns, db.getLearnedPatterns().filter((p) => p.id !== id));
+    queueDeletion('patterns', id);
   },
 
   // Preferences
   getPreferences: (): UserPreferences => read<UserPreferences>(STORAGE_KEYS.preferences, defaultPreferences),
   savePreferences: (prefs: Partial<UserPreferences>) => {
     const current = db.getPreferences();
-    write(STORAGE_KEYS.preferences, { ...current, ...prefs });
+    write(STORAGE_KEYS.preferences, {
+      ...current,
+      ...prefs,
+      updatedAt: prefs.updatedAt || current.updatedAt || new Date().toISOString(),
+    });
+  },
+  resetPreferences: () => {
+    write(STORAGE_KEYS.preferences, defaultPreferences);
+    queueDeletion('settings', 'preferences');
   },
 
   // StepFun Config
@@ -171,10 +244,28 @@ export const db = {
     write(STORAGE_KEYS.stepfunConfig, { ...current, ...config });
   },
 
-  // Bulk delete
+  // Bulk replace (import) — records lacking updatedAt get stamped now so imports win LWW
+  replaceAllData: (tasks: Task[], goals: Goal[], history: DailySnapshot[]) => {
+    write(STORAGE_KEYS.tasks, sortTasks(tasks.map(stampUpdatedAt)));
+    write(STORAGE_KEYS.goals, sortGoals(goals.map(stampUpdatedAt)));
+    write(STORAGE_KEYS.history, sortHistory(history.map(stampUpdatedAt)));
+  },
+
+  // Bulk delete — keeps the device-local StepFun API key (sync never manages it)
   clearAll: () => {
+    const stepfun = db.getStepFunConfig();
     Object.values(STORAGE_KEYS).forEach((key) => {
       if (typeof window !== 'undefined') localStorage.removeItem(key);
     });
+    if (typeof window !== 'undefined') {
+      db.saveStepFunConfig(stepfun);
+      window.localStorage.removeItem('mindsync_last_sync');
+    }
   },
+
+  // Sync deletion queue (tombstones; see src/lib/sync.ts)
+  queueDeletion,
+  getDeletionQueue,
+  removeDeletion,
+  clearDeletionQueue: () => write(STORAGE_KEYS.syncDeletions, []),
 };

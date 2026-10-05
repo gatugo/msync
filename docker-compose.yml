@@ -1,0 +1,33 @@
+# MindSync — local-first stack
+#   app .......... Next.js standalone server (UI + /api/coach + /pb sync proxy)
+#   pocketbase ... sync backend (single SQLite file in ./pb_data)
+#
+# Usage:  docker compose up --build   ->  app on :3000, PocketBase on :8090 (admin UI at /_/)
+
+services:
+  app:
+    build:
+      context: .
+    ports:
+      - "3000:3000"
+    environment:
+      # Server-side only: where the /pb proxy forwards sync requests.
+      # Inside compose, use the service name (Docker DNS).
+      - PB_INTERNAL_URL=http://pocketbase:8090
+    restart: unless-stopped
+    depends_on:
+      - pocketbase
+
+  pocketbase:
+    # pinned for reproducibility -- bump deliberately
+    image: adrianmusante/pocketbase:0.40.4
+    ports:
+      - "8090:8090"
+    environment:
+      # match the bind mount below (image default workdir is /pocketbase)
+      - POCKETBASE_WORKDIR=/pb_data
+    volumes:
+      # the entire sync database is this one folder — copy it = backup.
+      # (POCKETBASE_WORKDIR above points the image's data dir at this mount.)
+      - ./pb_data:/pb_data
+    restart: unless-stopped

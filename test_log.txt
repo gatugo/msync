@@ -1,9 +1,0 @@
-﻿=== Testing AI Logic ===
-[PASS] Prompt includes correct date
-[PASS] Prompt includes correct score
-[PASS] Prompt includes correct task list
-[PASS] Parsed 2 actions from response
-[PASS] Parsed Action 1 Title
-[PASS] Parsed Action 2 Title
-
-Passed 6/8

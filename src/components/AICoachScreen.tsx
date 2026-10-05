@@ -1,5 +1,6 @@
 'use client';
 
+import { isoToLocalDateKey } from '@/lib/localDate';
 import { useState, useRef, useEffect, ReactNode, useMemo } from 'react';
 import { X, Send, Bot, Sparkles, TrendingUp, MessageCircle, Trash2, User, PlusCircle, CheckCircle2, RotateCw, Brain, Cpu, Clock, Flag, Zap, Activity, ChevronDown, AlertTriangle, Battery, Calendar, Coffee, Wifi, WifiOff } from 'lucide-react';
 import { useStore } from '@/store/useStore';
@@ -587,7 +588,7 @@ ${insight}
         upcomingTasks, activeGoals
     } = useMemo(() => {
         const tStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        const tTasks = tasks.filter(t => t.scheduledDate === tStr || (t.status === 'DONE' && t.completedAt?.startsWith(tStr)));
+        const tTasks = tasks.filter(t => t.scheduledDate === tStr || (t.status === 'DONE' && isoToLocalDateKey(t.completedAt) === tStr));
         const aTasks = tTasks.filter(t => t.type === 'ADULT');
         const cTasks = tTasks.filter(t => t.type === 'CHILD');
         const rTasks = tTasks.filter(t => t.type === 'REST');

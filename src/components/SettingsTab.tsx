@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore } from '@/store/useStore';
 import TimePicker from './TimePicker';
+import SyncPanel from './SyncPanel';
 import { Database, FlaskConical, Brain, CloudOff, Shield, Bot, PowerOff, Layers, WifiOff, Moon, Gamepad2, Sparkles, Heart, Briefcase, XCircle, ChevronRight, Upload, Download, Trash2, AlertTriangle, ArrowDown, ArrowUp, Globe, Cpu, Key, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '@/lib/db';
@@ -517,6 +518,8 @@ export default function SettingsTab({ handleImport, handleExport, onScrollDirect
                                     <h3 className="text-xl font-black text-white tracking-tight">Data Lab</h3>
                                     <p className="text-xs text-slate-400 font-medium px-4">Maintain, back up, or restore your neural data snapshots</p>
                                 </div>
+
+                                <SyncPanel />
 
                                 <div className="grid grid-cols-1 gap-3 relative shrink-0">
                                     <button

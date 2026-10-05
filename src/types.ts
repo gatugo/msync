@@ -11,6 +11,7 @@ export interface UserPreferences {
     aiEnabled?: boolean;
     autoArrangeTasks?: boolean;
     forceOfflineMode?: boolean;
+    updatedAt?: string; // ISO timestamp — sync (last-write-wins)
 }
 
 export interface LearnedPattern {
@@ -19,6 +20,7 @@ export interface LearnedPattern {
     confidence: number; // 0.0 to 1.0
     createdAt: string;
     lastApplied?: string;
+    updatedAt?: string; // ISO timestamp — sync (last-write-wins)
 }
 
 export interface Task {
@@ -32,6 +34,7 @@ export interface Task {
     createdAt: string;
     completedAt?: string;
     user_id?: string;
+    updatedAt?: string; // ISO timestamp — sync (last-write-wins)
 }
 
 export interface DailySnapshot {
@@ -41,6 +44,7 @@ export interface DailySnapshot {
     adultCompleted: number;
     childCompleted: number;
     restCompleted: number;
+    updatedAt?: string; // ISO timestamp — sync (last-write-wins)
 }
 
 export interface Goal {
@@ -52,6 +56,7 @@ export interface Goal {
     completed: boolean;
     createdAt: string;
     user_id?: string;
+    updatedAt?: string; // ISO timestamp — sync (last-write-wins)
 }
 
 export interface AIMemory {
@@ -59,4 +64,5 @@ export interface AIMemory {
     fact: string;
     createdAt: string;
     user_id?: string;
+    updatedAt?: string; // ISO timestamp — sync (last-write-wins)
 }

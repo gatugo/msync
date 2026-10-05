@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Plus, X, ChevronDown, Bot, Loader2, Sparkles, Brain, Coffee } from 'lucide-react';
 import { useStore } from '@/store/useStore';
+import { db } from '@/lib/db';
 import { TaskType } from '@/types';
 import TimePicker from './TimePicker';
 import DatePicker from './DatePicker';
@@ -110,6 +111,13 @@ export default function AddTaskPanel({ isOpen, onClose, onAdd }: AddTaskPanelPro
                 throw new Error('OFFLINE_MODE');
             }
 
+            const stepfunConfig = db.getStepFunConfig();
+            const hasValidStepFun = !!stepfunConfig?.apiKey?.trim();
+
+            if (!hasValidStepFun) {
+                throw new Error('NO_STEPFUN_KEY');
+            }
+
             const now = new Date();
             const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
             const localTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
@@ -130,13 +138,14 @@ export default function AddTaskPanel({ isOpen, onClose, onAdd }: AddTaskPanelPro
                         duration: t.duration,
                         status: t.status
                     })),
+                    stepfunConfig,
                 }),
             });
 
             const data = await response.json();
 
-            if (!data.success) {
-                throw new Error(data.error || 'AI request failed');
+            if (!response.ok || !data.success) {
+                throw new Error(data?.error || 'AI request failed');
             }
 
             let jsonStr = data.response;
@@ -148,7 +157,6 @@ export default function AddTaskPanel({ isOpen, onClose, onAdd }: AddTaskPanelPro
             }
 
             const suggestion = JSON.parse(jsonStr);
-
 
             const newType = (suggestion.suggestedType && ['ADULT', 'CHILD', 'REST'].includes(suggestion.suggestedType))
                 ? suggestion.suggestedType
@@ -168,8 +176,7 @@ export default function AddTaskPanel({ isOpen, onClose, onAdd }: AddTaskPanelPro
         } catch (error) {
             console.error('AI Smart Add error:', error);
 
-            // Local Regex Fallback when API fails (e.g. Rate Limits)
-            // console.log('Using local fallback parsing...');
+            // Local Regex Fallback when API fails / no key / offline
             const parsed = parseNaturalDateTime(title);
 
             if (parsed.date || parsed.time || parsed.duration) {

@@ -2,7 +2,7 @@
 
 **Status:** ✅ Production Ready  
 **Stack:** Next.js 16 + TypeScript + Tailwind CSS + Zustand  
-**Data:** Browser-local only (`localStorage`) — no cloud, no accounts  
+**Data:** Browser-local by default (`localStorage`) — optional opt-in sync via your own PocketBase; no third-party accounts  
 **AI:** Provider-agnostic Coach with online/offline fallback
 
 ---
@@ -17,15 +17,13 @@ Unlike ordinary todo apps, it doesn’t just track tasks. It classifies them, sc
 
 ## Screenshots
 
-> Add screenshots to `/public/screenshots/` and update the links below.
+| Goals Panel | Add Goal | Goal Created | AI Breakdown |
+|-------------|---------|--------------|--------------|
+| ![Goals](public/screenshots/01-goals-panel.png) | ![Add Goal](public/screenshots/02-add-goal-form.png) | ![Goal Created](public/screenshots/04-goal-created.png) | ![Breakdown](public/screenshots/05-breakdown-coach.png) |
 
-| Home / Timeline | AI Coach | Goals |
-|-----------------|----------|-------|
-| ![Timeline](public/screenshots/timeline.png) | ![Coach](public/screenshots/coach.png) | ![Goals](public/screenshots/goals.png) |
-
-| Calendar | Kanban |
-|----------|--------|
-| ![Calendar](public/screenshots/calendar.png) | ![Kanban](public/screenshots/kanban.png) |
+| AI Coach Chat | Timeline | Kanban | Settings |
+|---------------|----------|--------|----------|
+| ![Coach](public/screenshots/08-ai-coach-chat.png) | ![Timeline](public/screenshots/09-timeline-tasks.png) | ![Kanban](public/screenshots/10-kanban-board.png) | ![Settings](public/screenshots/06-settings-ai-config.png) |
 
 ---
 
@@ -72,6 +70,78 @@ STEPFUN_API_URL=https://api.stepfun.ai/step_plan/v1
 ```
 
 > If no key is present, the Coach automatically falls back to offline Smart Logic. No hardcoded keys are included in the repo.
+
+---
+
+## Run It Locally (Docker — recommended)
+
+The whole stack (app + sync server) runs on your own machine:
+
+```bash
+docker compose up --build
+# app ......... http://localhost:3000
+# PocketBase .. http://localhost:8090  (admin UI at http://localhost:8090/_/)
+```
+
+That's it. Your data lives in `./pb_data` (a single SQLite-backed folder — copy it to back up, mount it anywhere).
+
+**Without Docker** (plain Node):
+
+```bash
+npm ci
+npm run build
+npm start          # http://localhost:3000
+```
+
+For the sync server without Docker, download the PocketBase binary from
+https://pocketbase.io and run `./pocketbase serve` (data lands in `./pb_data`).
+
+---
+
+## Cross-Device Sync (optional)
+
+MindSync is **local-first**: every task, goal, and preference is saved in the
+browser's `localStorage` immediately, so the app works fully offline. Sync is
+opt-in and reconciles that local cache with your PocketBase account:
+
+- **PocketBase** (MIT, single binary) is the merge point — accounts, API, storage in one.
+- Edits push/pull on **Sync now** and automatically on app load when signed in.
+- Conflicts resolve **last-write-wins per record** (`updatedAt` timestamp).
+- Deletions propagate via tombstones (and the record is removed server-side).
+- Your **AI API key never syncs** — it stays on the device it was entered on.
+- Want your phone to sync from home? The app talks to PocketBase through its own
+  origin (`/pb` proxy, see `next.config.ts` rewrites), so **no per-device URL setup is
+  needed** — reach the *app* from your phone (same Wi-Fi, or put the PC on **Tailscale**
+  and open `http://<pc-tailscale-ip>:3000`) and sync just works. This also keeps the
+  page's CSP (`connect-src 'self'`) satisfied.
+- Advanced: the Settings → Data Lab URL field can point the app at a direct PocketBase
+  address (e.g. `http://127.0.0.1:8090`). Direct cross-origin addresses are outside the
+  CSP allowlist (browser blocks them) and may be cached by the service worker — the
+  same-origin `/pb` path is the supported configuration.
+- **Erase All Data** is sync-aware: it tombstones every record (so other devices and the
+  server forget it too) and signs you out before wiping, so the next sync can't resurrect
+  erased data. If you erase while offline, the tombstones stay queued and flush on your
+  next sync.
+- Known limitation: daily snapshots are keyed by the device's local date, so devices
+  in different timezones write separate snapshot rows for the same day.
+
+**One-time setup** (creates the sync schema; safe to re-run):
+
+```bash
+# 1. PocketBase running (compose up, or ./pocketbase serve)
+# 2. create the collections (uses your PocketBase superuser login)
+node tools/pb-setup.mjs --email admin@example.com --password your-password
+# 3. create your app user in the PocketBase admin UI (users collection, email+password)
+# 4. in the app: Settings -> Data Lab -> Cloud Sync -> sign in
+```
+
+**Verify the sync layer end-to-end** (needs a running PocketBase + the test user):
+
+```bash
+PB_ADMIN_EMAIL=admin@example.com PB_ADMIN_PASSWORD=your-password \
+TEST_EMAIL=you@email.com TEST_PASSWORD=your-password \
+npx tsx tools/sync-smoke-test.ts
+```
 
 ---
 
@@ -178,6 +248,8 @@ Recommended 5-minute showcase:
 | Styling | Tailwind CSS |
 | State | Zustand |
 | Storage | `localStorage` via `db.ts` |
+| Sync (optional) | PocketBase via `sync.ts` — local-first, last-write-wins |
+| Packaging | Docker (`output: 'standalone'`, see `Dockerfile`, `docker-compose.yml`) |
 | AI | `/api/coach` → StepFun StepPlan |
 | Offline brain | `runOfflineLogic()` in `AICoachScreen.tsx` |
 | Date parsing | `src/lib/datePatterns.ts` |
@@ -194,14 +266,18 @@ Recommended 5-minute showcase:
 | `src/lib/smartLogic.ts` | Offline scheduling logic |
 | `src/lib/datePatterns.ts` | Natural language date/time parser |
 | `src/lib/db.ts` | localStorage persistence |
+| `src/lib/sync.ts` | PocketBase sync layer (push/pull, tombstones, LWW) |
+| `src/components/SyncPanel.tsx` | Cloud Sync UI (Settings → Data Lab) |
+| `tools/pb-setup.mjs` | Creates the PocketBase sync schema (idempotent) |
+| `tools/sync-smoke-test.ts` | Two-device sync verification |
 | `src/store/useStore.ts` | Global state |
 
 ---
 
 ## Data & Privacy
 
-- All data is local by default.
-- No cloud sync, no accounts, no telemetry.
+- All data is local by default — no accounts, no telemetry.
+- Sync is opt-in and goes to **your own** PocketBase (nothing is sent to a third party).
 - Use **Export** to back up JSON.
 - Use **Import** to restore from backup.
 

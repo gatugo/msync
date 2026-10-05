@@ -1,4 +1,0 @@
-goal_visible=true
-
-breakdown_text_len=1664
-breakdown_mentions_goal=true

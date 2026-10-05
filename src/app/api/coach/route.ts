@@ -3,12 +3,55 @@ import { COACH_SYSTEM_PROMPT, getSystemPrompt } from '@/lib/aiPrompts';
 import { z } from 'zod';
 import { buildPrompt } from '@/lib/coachLogic';
 
+// Lightweight in-memory rate limiter: per IP, per endpoint
+type RateLimitEntry = { count: number; resetAt: number };
+const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
+const RATE_LIMIT_MAX = 30; // max requests per minute per IP
+const rateLimits = new Map<string, RateLimitEntry>();
+
+function getClientIp(req: NextRequest): string {
+  const xfwd = req.headers.get('x-forwarded-for');
+  if (xfwd) return xfwd.split(',')[0].trim() || 'unknown';
+  return req.headers.get('x-real-ip') || 'unknown';
+}
+
+function sanitizeText(input: string, maxLength: number): string {
+  return input
+    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '') // remove control chars
+    .slice(0, maxLength)
+    .trim();
+}
+
+function enforceRateLimit(req: NextRequest): NextResponse | null {
+  const ip = getClientIp(req);
+  const now = Date.now();
+  const entry = rateLimits.get(ip);
+
+  if (entry && now < entry.resetAt) {
+    entry.count += 1;
+    if (entry.count > RATE_LIMIT_MAX) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please wait a moment before trying again.' },
+        { status: 429 }
+      );
+    }
+  } else {
+    rateLimits.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+  }
+
+  return null;
+}
+
 const CoachRequestSchema = z.object({
   mode: z.string().max(30),
   tasks: z.array(z.any()).max(1000).optional(),
   score: z.number().optional(),
   balance: z.string().max(30).optional(),
-  question: z.string().max(1000).optional(),
+  question: z
+    .string()
+    .max(1000)
+    .transform((val) => sanitizeText(val, 1000))
+    .optional(),
   taskTitle: z.string().max(150).optional(),
   history: z.array(z.any()).max(1000).optional(),
   goals: z.array(z.any()).max(1000).optional(),
@@ -17,11 +60,13 @@ const CoachRequestSchema = z.object({
   localDate: z.string().max(20).optional(),
   localTime: z.string().max(20).optional(),
   summaryInterval: z.string().max(30).optional(),
-  stepfunConfig: z.object({
-    apiKey: z.string().min(1),
-    baseUrl: z.string().url().optional(),
-    model: z.string().optional(),
-  }).optional(),
+  stepfunConfig: z
+    .object({
+      apiKey: z.string().min(1),
+      baseUrl: z.string().url().optional(),
+      model: z.string().optional(),
+    })
+    .optional(),
 });
 
 type CoachRequest = z.infer<typeof CoachRequestSchema>;

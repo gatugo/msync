@@ -1,0 +1,23 @@
+{
+  "provider": "stepfun",
+  "model": "step-5-preview",
+  "context": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "package.json",
+    "tsconfig.json",
+    "next.config.ts"
+  ],
+  "exclude": ["node_modules", ".next", "dist"],
+  "commands": {
+    "test": "npm run lint",
+    "build": "npm run build",
+    "dev": "npm run dev"
+  },
+  "autoSave": true,
+  "features": {
+    "inlineSuggestions": true,
+    "codeReview": true,
+    "testGeneration": true
+  }
+}
